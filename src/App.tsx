@@ -12,6 +12,7 @@ import { WordRibbonToolbar } from './components/WordRibbonToolbar';
 import { LibraryBookshelf } from './components/LibraryBookshelf';
 import { BookFetchTransition } from './components/BookFetchTransition';
 import { ManuscriptDetailsModal } from './components/ManuscriptDetailsModal';
+import { ConfirmDialog } from './components/ConfirmDialog';
 import { BookEditor } from './components/BookEditor';
 import { PoemEditor } from './components/PoemEditor';
 import { QuoteEditor } from './components/QuoteEditor';
@@ -21,7 +22,7 @@ import { PoemImageModal } from './components/PoemImageModal';
 import { VercelDeployGuideModal } from './components/VercelDeployGuideModal';
 import { BackupImportModal } from './components/BackupImportModal';
 import { soundEngine } from './utils/ambientSound';
-import { Library, Minimize2 } from 'lucide-react';
+import { Minimize2 } from 'lucide-react';
 
 export function App() {
   const [works, setWorks] = useState<LiteraryWork[]>(() => loadWorks());
@@ -40,9 +41,26 @@ export function App() {
   const [textAlignment, setTextAlignment] = useState<'left' | 'center' | 'justify'>('justify');
   const [hasDropcap, setHasDropcap] = useState<boolean>(true);
 
-  // Auto-save interval and status
+  // Auto-save interval, status, and state indicator
   const [autoSaveInterval, setAutoSaveInterval] = useState<AutoSaveInterval>(() => loadAutoSaveInterval());
   const [lastSavedAt, setLastSavedAt] = useState<number>(Date.now());
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+
+  // Custom Confirmation Dialog State
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    isDestructive?: boolean;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
 
   // Chapter tracking for books
   const currentWork = works.find((w) => w.id === selectedWorkId) || works[0];
@@ -77,12 +95,35 @@ export function App() {
   const currentWorkRef = useRef(currentWork);
   currentWorkRef.current = currentWork;
 
-  // Immediate save on edit to localStorage
+  // Browser beforeunload tab quit protection
   useEffect(() => {
-    saveWorks(works);
-  }, [works]);
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isSaving) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isSaving]);
 
-  // Periodic interval auto-save and revision recorder
+  // Debounced auto-save to localStorage with visual saving indicator
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const triggerSave = (updatedWorks: LiteraryWork[]) => {
+    setIsSaving(true);
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      saveWorks(updatedWorks);
+      setLastSavedAt(Date.now());
+      setIsSaving(false);
+    }, 450);
+  };
+
+  // Periodic interval revision recorder
   useEffect(() => {
     const intervalMs = autoSaveInterval * 60 * 1000;
     const timer = setInterval(() => {
@@ -102,8 +143,9 @@ export function App() {
   };
 
   const handleUpdateWork = (updated: LiteraryWork) => {
-    setWorks((prev) => prev.map((w) => (w.id === updated.id ? updated : w)));
-    setLastSavedAt(Date.now());
+    const newWorks = works.map((w) => (w.id === updated.id ? updated : w));
+    setWorks(newWorks);
+    triggerSave(newWorks);
   };
 
   // Chapter specific handlers for Books
@@ -208,19 +250,38 @@ export function App() {
       };
     }
 
-    setWorks((prev) => [newWork, ...prev]);
+    const newWorks = [newWork, ...works];
+    setWorks(newWorks);
     setSelectedWorkId(newWork.id);
+    triggerSave(newWorks);
     recordRevision(newWork, 'Initial creation');
     setShowBookshelf(false);
   };
 
-  const handleDeleteWork = (id: string) => {
-    setWorks((prev) => {
-      const filtered = prev.filter((w) => w.id !== id);
-      if (selectedWorkId === id && filtered.length > 0) {
-        setSelectedWorkId(filtered[0].id);
-      }
-      return filtered;
+  // Safe delete with custom confirmation popup
+  const handleRequestDeleteWork = (workToDelete: LiteraryWork) => {
+    const title = workToDelete.type === 'quote' 
+      ? `Quote by ${workToDelete.maker || 'Unknown'}` 
+      : workToDelete.title;
+
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Remove Volume from Bookshelf?',
+      message: `Are you sure you want to remove "${title}" from your library? Its contents and past revisions on this device will be deleted.`,
+      confirmLabel: 'Delete Volume',
+      cancelLabel: 'Keep Volume',
+      isDestructive: true,
+      onConfirm: () => {
+        setWorks((prev) => {
+          const filtered = prev.filter((w) => w.id !== workToDelete.id);
+          if (selectedWorkId === workToDelete.id && filtered.length > 0) {
+            setSelectedWorkId(filtered[0].id);
+          }
+          triggerSave(filtered);
+          return filtered;
+        });
+        setConfirmDialog((d) => ({ ...d, isOpen: false }));
+      },
     });
   };
 
@@ -245,7 +306,7 @@ export function App() {
       if (importedWorks.length > 0) {
         setSelectedWorkId(importedWorks[0].id);
       }
-      saveWorks(importedWorks);
+      triggerSave(importedWorks);
     } else {
       const existingIds = new Set(works.map(w => w.id));
       const adjustedImports = importedWorks.map(w => {
@@ -260,17 +321,26 @@ export function App() {
       if (adjustedImports.length > 0) {
         setSelectedWorkId(adjustedImports[0].id);
       }
-      saveWorks(merged);
+      triggerSave(merged);
     }
-    setLastSavedAt(Date.now());
   };
 
   const handleRestoreRevision = (snapshot: LiteraryWork) => {
-    setWorks((prev) => prev.map((w) => (w.id === snapshot.id ? snapshot : w)));
-    setSelectedWorkId(snapshot.id);
-    saveWorks(worksRef.current);
-    recordRevision(snapshot, 'Restored from history');
-    setLastSavedAt(Date.now());
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Restore Past Revision?',
+      message: 'Restoring this version will replace the current draft on your desk with the snapshot from that moment.',
+      confirmLabel: 'Restore Revision',
+      cancelLabel: 'Cancel',
+      isDestructive: false,
+      onConfirm: () => {
+        setWorks((prev) => prev.map((w) => (w.id === snapshot.id ? snapshot : w)));
+        setSelectedWorkId(snapshot.id);
+        triggerSave(worksRef.current);
+        recordRevision(snapshot, 'Restored from history');
+        setConfirmDialog((d) => ({ ...d, isOpen: false }));
+      },
+    });
   };
 
   const handleOpenSnapshot = () => {
@@ -287,7 +357,7 @@ export function App() {
   return (
     <div className="min-h-screen bg-[#F5FBE6] text-[#233D4D] flex flex-col selection:bg-[#215E61]/20 selection:text-[#215E61] relative">
       
-      {/* 1. FIXED TOP BAR WITH PERMANENT DIVIDER BORDER */}
+      {/* 1. FIXED TOP BAR WITH PERMANENT DIVIDER BORDER & SINGLE BOOKSHELF BUTTON */}
       {!isZenMode && currentWork && (
         <WordRibbonToolbar
           work={currentWork}
@@ -298,6 +368,7 @@ export function App() {
           isZenMode={isZenMode}
           autoSaveInterval={autoSaveInterval}
           lastSavedAt={lastSavedAt}
+          isSaving={isSaving}
           onFontFamilyChange={setFontFamily}
           onFontSizeChange={setFontSize}
           onTextAlignmentChange={setTextAlignment}
@@ -325,23 +396,6 @@ export function App() {
         >
           <Minimize2 size={16} />
           <span>Exit Zen Mode</span>
-        </button>
-      )}
-
-      {/* Discreet Floating Bookshelf Tab on Left Screen Edge */}
-      {!isZenMode && (
-        <button
-          onClick={() => setShowBookshelf(true)}
-          className="fixed left-0 top-1/2 -translate-y-1/2 z-30 px-2 py-3 rounded-r-xl bg-[#215E61] hover:bg-[#1a4a4d] text-[#F5FBE6] shadow-lg border-y border-r border-[#3a7e82] transition-all cursor-pointer flex flex-col items-center gap-1.5 group select-none opacity-85 hover:opacity-100"
-          title="Open Library Bookshelf Menu"
-        >
-          <Library size={16} />
-          <span 
-            style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
-            className="text-[10px] font-serif uppercase tracking-widest font-bold rotate-180"
-          >
-            Bookshelf
-          </span>
         </button>
       )}
 
@@ -397,7 +451,7 @@ export function App() {
         )}
       </main>
 
-      {/* 3. THE 3D INTERACTIVE LIBRARY BOOKSHELF MENU */}
+      {/* 3. MULTI-TIER SCROLLABLE LIBRARY BOOKSHELF MENU */}
       <LibraryBookshelf
         works={works}
         selectedWorkId={selectedWorkId}
@@ -405,7 +459,7 @@ export function App() {
         onClose={() => setShowBookshelf(false)}
         onSelectWork={handleSelectBookFromShelf}
         onCreateWork={handleCreateWork}
-        onDeleteWork={handleDeleteWork}
+        onRequestDelete={handleRequestDeleteWork}
       />
 
       {/* 4. ATMOSPHERIC BOOK FETCHING / LOADING TRANSITION */}
@@ -415,6 +469,18 @@ export function App() {
           onFinished={handleFinishBookFetch}
         />
       )}
+
+      {/* 5. CUSTOM CONFIRMATION POPUP DIALOG */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        confirmLabel={confirmDialog.confirmLabel}
+        cancelLabel={confirmDialog.cancelLabel}
+        isDestructive={confirmDialog.isDestructive}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog((d) => ({ ...d, isOpen: false }))}
+      />
 
       {/* Slide-over Manuscript Details & Context Modal */}
       {showDetailsModal && currentWork && (

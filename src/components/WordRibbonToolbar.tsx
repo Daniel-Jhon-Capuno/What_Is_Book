@@ -30,6 +30,7 @@ interface WordRibbonToolbarProps {
   isZenMode: boolean;
   autoSaveInterval: AutoSaveInterval;
   lastSavedAt: number;
+  isSaving?: boolean;
   onFontFamilyChange: (font: string) => void;
   onFontSizeChange: (size: number) => void;
   onTextAlignmentChange: (align: 'left' | 'center' | 'justify') => void;
@@ -57,6 +58,7 @@ export const WordRibbonToolbar: React.FC<WordRibbonToolbarProps> = ({
   isZenMode,
   autoSaveInterval,
   lastSavedAt,
+  isSaving = false,
   onFontFamilyChange,
   onFontSizeChange,
   onTextAlignmentChange,
@@ -347,14 +349,24 @@ export const WordRibbonToolbar: React.FC<WordRibbonToolbarProps> = ({
             {isZenMode ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
           </button>
 
-          {/* Auto-save status indicator */}
+          {/* Auto-save status indicator with distinct 'Saving...' vs 'Saved' state */}
           <button
             onClick={onOpenBackupModal}
-            className="flex items-center gap-1.5 px-2 py-1 text-[11px] text-[#536D7D] hover:text-[#215E61] cursor-pointer"
-            title={`Auto-saving every ${autoSaveInterval}m. Click to configure.`}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[#215E61]/20 bg-white/70 hover:bg-white text-[11px] text-[#233D4D] shadow-2xs transition-all cursor-pointer"
+            title={`Auto-saving every ${autoSaveInterval}m. Click to configure interval or view revisions.`}
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
-            <span className="hidden xl:inline">{formattedTime}</span>
+            {isSaving ? (
+              <>
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+                <span className="text-amber-700 font-semibold">Saving...</span>
+              </>
+            ) : (
+              <>
+                <span className="w-2 h-2 rounded-full bg-emerald-600" />
+                <span className="text-[#215E61] font-medium hidden sm:inline">Saved</span>
+                <span className="text-[#536D7D] hidden md:inline">({formattedTime})</span>
+              </>
+            )}
           </button>
 
         </div>
