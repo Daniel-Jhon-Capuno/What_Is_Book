@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
-import { PoemWork } from '../types';
+import type { PoemWork } from '../types';
 import { toPng } from 'html-to-image';
-import { Download, X, Sparkles, Image } from 'lucide-react';
+import { Download, X, Sparkles, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface PoemImageModalProps {
@@ -12,6 +12,7 @@ interface PoemImageModalProps {
 export const PoemImageModal: React.FC<PoemImageModalProps> = ({ poem, onClose }) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const [theme, setTheme] = useState<'morning-paper' | 'silent-grove' | 'blue-monolith'>('morning-paper');
+  const [alignment, setAlignment] = useState<'center' | 'left' | 'right'>('center');
   const [isExporting, setIsExporting] = useState<boolean>(false);
 
   const getThemeStyles = () => {
@@ -61,7 +62,7 @@ export const PoemImageModal: React.FC<PoemImageModalProps> = ({ poem, onClose })
         .slice(0, 20);
 
       const link = document.createElement('a');
-      link.download = `poem_${safeName}_broadsheet.png`;
+      link.download = `poem_${safeName}_broadsheet_${alignment}.png`;
       link.href = dataUrl;
       link.click();
 
@@ -89,13 +90,14 @@ export const PoemImageModal: React.FC<PoemImageModalProps> = ({ poem, onClose })
             <Sparkles size={16} />
             Poem Broadsheet Snapshot
           </div>
-          <button onClick={onClose} className="p-1 text-[#233D4D] hover:text-[#215E61]">
+          <button onClick={onClose} className="p-1 text-[#233D4D] hover:text-[#215E61] cursor-pointer">
             <X size={20} />
           </button>
         </div>
 
-        {/* Theme Picker */}
-        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+        {/* Toolbar: Theme & Alignment Pickers */}
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+          {/* Theme Palette */}
           <div className="flex items-center gap-2">
             <span className="text-xs text-[#215E61] font-semibold uppercase tracking-wider">Theme:</span>
             {[
@@ -106,7 +108,7 @@ export const PoemImageModal: React.FC<PoemImageModalProps> = ({ poem, onClose })
               <button
                 key={t.id}
                 onClick={() => setTheme(t.id as 'morning-paper' | 'silent-grove' | 'blue-monolith')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition-all ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition-all cursor-pointer ${
                   theme === t.id ? 'border-[#215E61] bg-white shadow-xs font-semibold' : 'border-[#215E61]/20 bg-[#F5FBE6]'
                 }`}
               >
@@ -116,13 +118,47 @@ export const PoemImageModal: React.FC<PoemImageModalProps> = ({ poem, onClose })
             ))}
           </div>
 
+          {/* Alignment Picker */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-[#215E61] font-semibold uppercase tracking-wider">Align:</span>
+            <div className="flex items-center bg-white rounded-lg border border-[#215E61]/25 p-0.5 text-xs">
+              <button
+                onClick={() => setAlignment('left')}
+                className={`p-1.5 rounded transition-colors cursor-pointer ${
+                  alignment === 'left' ? 'bg-[#215E61] text-[#F5FBE6]' : 'text-[#233D4D] hover:text-[#215E61]'
+                }`}
+                title="Align Left"
+              >
+                <AlignLeft size={13} />
+              </button>
+              <button
+                onClick={() => setAlignment('center')}
+                className={`p-1.5 rounded transition-colors cursor-pointer ${
+                  alignment === 'center' ? 'bg-[#215E61] text-[#F5FBE6]' : 'text-[#233D4D] hover:text-[#215E61]'
+                }`}
+                title="Align Center"
+              >
+                <AlignCenter size={13} />
+              </button>
+              <button
+                onClick={() => setAlignment('right')}
+                className={`p-1.5 rounded transition-colors cursor-pointer ${
+                  alignment === 'right' ? 'bg-[#215E61] text-[#F5FBE6]' : 'text-[#233D4D] hover:text-[#215E61]'
+                }`}
+                title="Align Right"
+              >
+                <AlignRight size={13} />
+              </button>
+            </div>
+          </div>
+
           <button
             onClick={handleDownload}
             disabled={isExporting}
-            className="py-1.5 px-4 bg-[#215E61] hover:bg-[#1b4d50] text-[#F5FBE6] rounded-lg font-medium text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer disabled:opacity-50"
+            className="py-1.5 px-4 bg-[#215E61] hover:bg-[#1b4d50] text-[#F5FBE6] rounded-lg font-medium text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer disabled:opacity-50 ml-auto"
           >
             <Download size={14} />
-            {isExporting ? 'Generating...' : 'Download Broadsheet PNG'}
+            {isExporting ? 'Generating...' : 'Download PNG'}
           </button>
         </div>
 
@@ -136,8 +172,9 @@ export const PoemImageModal: React.FC<PoemImageModalProps> = ({ poem, onClose })
               fontFamily: "'EB Garamond', Georgia, serif",
               maxWidth: '560px',
               width: '100%',
+              textAlign: alignment,
             }}
-            className="p-8 md:p-12 border-2 rounded-sm shadow-lg text-center relative"
+            className="p-8 md:p-12 border-2 rounded-sm shadow-lg relative"
           >
             {/* Inner dashed frame */}
             <div 
@@ -170,7 +207,11 @@ export const PoemImageModal: React.FC<PoemImageModalProps> = ({ poem, onClose })
 
             {/* Flourish */}
             <div 
-              className="w-12 h-[1px] mx-auto mb-6 relative"
+              className={`w-12 h-[1px] mb-6 relative ${
+                alignment === 'left' ? 'mr-auto' :
+                alignment === 'right' ? 'ml-auto' :
+                'mx-auto'
+              }`}
               style={{ backgroundColor: currentStyles.accent }}
             >
               <span 
@@ -181,8 +222,12 @@ export const PoemImageModal: React.FC<PoemImageModalProps> = ({ poem, onClose })
               </span>
             </div>
 
-            {/* Stanzas */}
-            <div className="space-y-4 text-base md:text-lg leading-relaxed mb-8">
+            {/* Stanzas with alignment */}
+            <div className={`space-y-4 text-base md:text-lg leading-relaxed mb-8 ${
+              alignment === 'left' ? 'text-left' :
+              alignment === 'right' ? 'text-right' :
+              'text-center'
+            }`}>
               {poem.body.split(/\n\s*\n/).map((stanza, idx) => (
                 <div key={idx} className="whitespace-pre-line">
                   {stanza}

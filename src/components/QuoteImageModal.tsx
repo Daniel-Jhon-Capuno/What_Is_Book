@@ -1,7 +1,19 @@
 import React, { useRef, useState } from 'react';
-import { QuoteWork } from '../types';
+import type { QuoteWork } from '../types';
 import { toPng, toBlob } from 'html-to-image';
-import { Download, Copy, Check, X, Sparkles, Image, Ratio } from 'lucide-react';
+import { 
+  Download, 
+  Copy, 
+  Check, 
+  X, 
+  Sparkles, 
+  Image, 
+  Ratio, 
+  AlignLeft, 
+  AlignCenter, 
+  AlignRight, 
+  AlignJustify 
+} from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface QuoteImageModalProps {
@@ -12,13 +24,16 @@ interface QuoteImageModalProps {
 type PaletteType = 'morning-paper' | 'silent-grove' | 'blue-monolith' | 'antique-parchment';
 type RatioType = '1:1' | '9:16' | '4:5' | '16:9';
 type FontType = 'eb-garamond' | 'cormorant' | 'cinzel' | 'newsreader';
+type AlignmentType = 'center' | 'left' | 'right' | 'justify';
 
 export const QuoteImageModal: React.FC<QuoteImageModalProps> = ({ quote, onClose }) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const [palette, setPalette] = useState<PaletteType>('morning-paper');
   const [ratio, setRatio] = useState<RatioType>('1:1');
-  const [font, setFont] = useState<FontType>('eb-garamond');
-  const [fontSize, setFontSize] = useState<number>(24);
+  const [font, setFont] = useState<FontType>('cinzel');
+  const [alignment, setAlignment] = useState<AlignmentType>('center');
+  const [verticalAlign, setVerticalAlign] = useState<'center' | 'top' | 'bottom'>('center');
+  const [fontSize, setFontSize] = useState<number>(20);
   const [showBorder, setShowBorder] = useState<boolean>(true);
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
@@ -113,7 +128,7 @@ export const QuoteImageModal: React.FC<QuoteImageModalProps> = ({ quote, onClose
         .slice(0, 20);
 
       const link = document.createElement('a');
-      link.download = `quote_${safeName}_${ratio.replace(':', 'x')}.png`;
+      link.download = `quote_${safeName}_${ratio.replace(':', 'x')}_${alignment}.png`;
       link.href = dataUrl;
       link.click();
 
@@ -153,12 +168,12 @@ export const QuoteImageModal: React.FC<QuoteImageModalProps> = ({ quote, onClose
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#233D4D]/60 backdrop-blur-sm overflow-y-auto">
-      <div className="relative w-full max-w-4xl bg-[#F5FBE6] rounded-2xl shadow-2xl border border-[#215E61]/20 flex flex-col md:flex-row overflow-hidden my-6 max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-[#233D4D]/70 backdrop-blur-sm overflow-y-auto">
+      <div className="relative w-full max-w-4xl bg-[#F5FBE6] rounded-2xl shadow-2xl border border-[#215E61]/20 flex flex-col md:flex-row overflow-hidden my-4 max-h-[94vh]">
         
         {/* Controls Sidebar */}
-        <div className="w-full md:w-80 p-6 bg-[#ebf3d3]/80 border-r border-[#215E61]/15 flex flex-col justify-between overflow-y-auto">
-          <div className="space-y-6">
+        <div className="w-full md:w-80 p-5 sm:p-6 bg-[#ebf3d3]/80 border-r border-[#215E61]/15 flex flex-col justify-between overflow-y-auto">
+          <div className="space-y-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-[#215E61] font-semibold tracking-wide uppercase text-xs">
                 <Sparkles size={16} />
@@ -172,22 +187,50 @@ export const QuoteImageModal: React.FC<QuoteImageModalProps> = ({ quote, onClose
               </button>
             </div>
 
-            {/* Palette Presets */}
+            {/* Writing Alignment Selection (NEW) */}
+            <div>
+              <label className="block text-xs font-semibold text-[#215E61] uppercase tracking-wider mb-2">
+                Writing Alignment
+              </label>
+              <div className="grid grid-cols-4 gap-1.5">
+                {[
+                  { id: 'center', label: 'Center', icon: AlignCenter },
+                  { id: 'left', label: 'Left', icon: AlignLeft },
+                  { id: 'right', label: 'Right', icon: AlignRight },
+                  { id: 'justify', label: 'Justify', icon: AlignJustify },
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => setAlignment(item.id as AlignmentType)}
+                    className={`py-2 px-1 rounded-lg text-center border transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${
+                      alignment === item.id
+                        ? 'border-[#215E61] bg-[#215E61] text-[#F5FBE6] font-semibold shadow-2xs'
+                        : 'border-[#215E61]/20 bg-white/70 text-[#233D4D] hover:bg-white text-xs'
+                    }`}
+                  >
+                    <item.icon size={14} />
+                    <span className="text-[10px]">{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Color Palette Presets */}
             <div>
               <label className="block text-xs font-semibold text-[#215E61] uppercase tracking-wider mb-2">
                 Color Palette
               </label>
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { id: 'morning-paper', name: 'Morning Paper', bg: '#F5FBE6', dot: '#215E61' },
-                  { id: 'silent-grove', name: 'Silent Grove', bg: '#215E61', dot: '#F5FBE6' },
-                  { id: 'blue-monolith', name: 'Blue Monolith', bg: '#233D4D', dot: '#F5FBE6' },
-                  { id: 'antique-parchment', name: 'Parchment', bg: '#FAF8F0', dot: '#215E61' },
+                  { id: 'morning-paper', name: 'Morning Paper', bg: '#F5FBE6' },
+                  { id: 'silent-grove', name: 'Silent Grove', bg: '#215E61' },
+                  { id: 'blue-monolith', name: 'Blue Monolith', bg: '#233D4D' },
+                  { id: 'antique-parchment', name: 'Parchment', bg: '#FAF8F0' },
                 ].map((item) => (
                   <button
                     key={item.id}
                     onClick={() => setPalette(item.id as PaletteType)}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border text-left transition-all ${
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border text-left transition-all cursor-pointer ${
                       palette === item.id 
                         ? 'border-[#215E61] bg-white text-[#215E61] shadow-xs ring-1 ring-[#215E61]' 
                         : 'border-[#215E61]/20 bg-[#F5FBE6] text-[#233D4D] hover:border-[#215E61]/50'
@@ -218,7 +261,7 @@ export const QuoteImageModal: React.FC<QuoteImageModalProps> = ({ quote, onClose
                   <button
                     key={item.id}
                     onClick={() => setRatio(item.id as RatioType)}
-                    className={`p-2 rounded-lg text-center border transition-all ${
+                    className={`p-2 rounded-lg text-center border transition-all cursor-pointer ${
                       ratio === item.id
                         ? 'border-[#215E61] bg-[#215E61] text-[#F5FBE6] font-semibold'
                         : 'border-[#215E61]/20 bg-white/70 text-[#233D4D] hover:bg-white text-xs'
@@ -238,15 +281,15 @@ export const QuoteImageModal: React.FC<QuoteImageModalProps> = ({ quote, onClose
               </label>
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { id: 'eb-garamond', name: 'EB Garamond', sample: 'Garamond' },
-                  { id: 'cinzel', name: 'Cinzel', sample: 'Cinzel' },
-                  { id: 'cormorant', name: 'Cormorant', sample: 'Cormorant' },
-                  { id: 'newsreader', name: 'Newsreader', sample: 'Newsreader' },
+                  { id: 'cinzel', name: 'Cinzel (Classical)' },
+                  { id: 'eb-garamond', name: 'EB Garamond' },
+                  { id: 'cormorant', name: 'Cormorant' },
+                  { id: 'newsreader', name: 'Newsreader' },
                 ].map((item) => (
                   <button
                     key={item.id}
                     onClick={() => setFont(item.id as FontType)}
-                    className={`p-2 rounded-lg text-xs border text-center transition-all ${
+                    className={`p-2 rounded-lg text-xs border text-center transition-all cursor-pointer ${
                       font === item.id
                         ? 'border-[#215E61] bg-white text-[#215E61] font-semibold shadow-xs'
                         : 'border-[#215E61]/20 bg-[#F5FBE6] text-[#233D4D] hover:bg-white'
@@ -267,8 +310,8 @@ export const QuoteImageModal: React.FC<QuoteImageModalProps> = ({ quote, onClose
                 </div>
                 <input
                   type="range"
-                  min="16"
-                  max="36"
+                  min="15"
+                  max="34"
                   value={fontSize}
                   onChange={(e) => setFontSize(Number(e.target.value))}
                   className="w-full accent-[#215E61] cursor-pointer"
@@ -288,7 +331,7 @@ export const QuoteImageModal: React.FC<QuoteImageModalProps> = ({ quote, onClose
           </div>
 
           {/* Action Buttons */}
-          <div className="space-y-2 pt-6 border-t border-[#215E61]/15">
+          <div className="space-y-2 pt-5 border-t border-[#215E61]/15">
             <button
               onClick={handleDownload}
               disabled={isExporting}
@@ -312,13 +355,13 @@ export const QuoteImageModal: React.FC<QuoteImageModalProps> = ({ quote, onClose
         <div className="flex-1 p-6 md:p-8 flex flex-col items-center justify-center bg-[#F5FBE6] overflow-auto relative">
           <button
             onClick={onClose}
-            className="hidden md:flex absolute top-5 right-5 p-2 text-[#233D4D]/60 hover:text-[#215E61] rounded-full hover:bg-black/5 transition-all"
+            className="hidden md:flex absolute top-5 right-5 p-2 text-[#233D4D]/60 hover:text-[#215E61] rounded-full hover:bg-black/5 transition-all cursor-pointer"
           >
             <X size={20} />
           </button>
 
           <div className="text-[11px] uppercase tracking-wider text-[#215E61] font-semibold mb-3 flex items-center gap-1.5 opacity-80">
-            <Image size={13} /> Live Snapshot Preview
+            <Image size={13} /> Live Snapshot Preview ({alignment.toUpperCase()})
           </div>
 
           {/* The Actual Rendered Card */}
@@ -345,8 +388,12 @@ export const QuoteImageModal: React.FC<QuoteImageModalProps> = ({ quote, onClose
               </div>
             )}
 
-            {/* Top: Large quotation mark */}
-            <div className="flex justify-center pt-2">
+            {/* Top: Large quotation mark aligned with setting */}
+            <div className={`flex pt-2 ${
+              alignment === 'left' ? 'justify-start pl-2' : 
+              alignment === 'right' ? 'justify-end pr-2' : 
+              'justify-center'
+            }`}>
               <span 
                 className="text-5xl md:text-6xl leading-none font-serif select-none"
                 style={{ color: currentStyles.quoteMark }}
@@ -355,21 +402,37 @@ export const QuoteImageModal: React.FC<QuoteImageModalProps> = ({ quote, onClose
               </span>
             </div>
 
-            {/* Middle: The Quote Body Text (ABOVE) */}
-            <div className="my-auto px-4 text-center">
+            {/* Middle: The Quote Body Text (ABOVE) with custom alignment */}
+            <div className={`my-auto px-4 ${
+              alignment === 'left' ? 'text-left' :
+              alignment === 'right' ? 'text-right' :
+              alignment === 'justify' ? 'text-justify' :
+              'text-center'
+            }`}>
               <p
-                style={{ fontSize: `${fontSize}px` }}
+                style={{ 
+                  fontSize: `${fontSize}px`,
+                  textAlign: alignment === 'justify' ? 'justify' : alignment,
+                }}
                 className="leading-relaxed italic font-normal"
               >
                 “{quote.quote}”
               </p>
             </div>
 
-            {/* Bottom: Maker Name & Context (BELOW) */}
-            <div className="pt-4 pb-2 text-center flex flex-col items-center">
+            {/* Bottom: Maker Name & Context (BELOW) aligned with setting */}
+            <div className={`pt-4 pb-2 flex flex-col ${
+              alignment === 'left' ? 'items-start text-left pl-4' :
+              alignment === 'right' ? 'items-end text-right pr-4' :
+              'items-center text-center'
+            }`}>
               {/* Divider line / flourish */}
               <div 
-                className="w-12 h-[1px] mb-3 relative opacity-60"
+                className={`w-12 h-[1px] mb-3 relative opacity-60 ${
+                  alignment === 'left' ? 'mr-auto' :
+                  alignment === 'right' ? 'ml-auto' :
+                  'mx-auto'
+                }`}
                 style={{ backgroundColor: currentStyles.maker }}
               >
                 <span 
@@ -401,7 +464,11 @@ export const QuoteImageModal: React.FC<QuoteImageModalProps> = ({ quote, onClose
 
               {/* Small discrete watermarking / hallmark */}
               <div 
-                className="text-[9px] uppercase tracking-widest mt-4 opacity-40 font-sans"
+                className={`text-[9px] uppercase tracking-widest mt-4 opacity-40 font-sans ${
+                  alignment === 'left' ? 'mr-auto' :
+                  alignment === 'right' ? 'ml-auto' :
+                  'mx-auto'
+                }`}
                 style={{ color: currentStyles.text }}
               >
                 Scribe & Parchment
