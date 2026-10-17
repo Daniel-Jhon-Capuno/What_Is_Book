@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { LiteraryWork, WorkType } from '../types';
+import type { LiteraryWork, WorkType, BookWork, PoemWork, QuoteWork } from '../types';
 import { 
   Plus, 
   Search, 
@@ -10,9 +10,10 @@ import {
   X, 
   ArrowLeft, 
   Sparkles, 
-  Layers, 
   Check, 
-  Calendar 
+  Calendar, 
+  Clock, 
+  FileText 
 } from 'lucide-react';
 
 interface LibraryBookshelfProps {
@@ -28,56 +29,74 @@ interface LibraryBookshelfProps {
 // Rich antique leather and cloth bound palettes
 const BOOK_SPINE_STYLES = [
   {
-    gradient: 'linear-gradient(to right, #123335 0%, #215E61 45%, #2a7377 75%, #184245 100%)',
+    gradient: 'linear-gradient(to right, #102e30 0%, #215E61 45%, #2a7377 75%, #153c3e 100%)',
     border: '#2f7e83',
     textColor: '#F5FBE6',
     ribbonColor: '#e0c068',
-    texture: 'emerald-cloth',
     accentGold: '#ebd27d',
   },
   {
-    gradient: 'linear-gradient(to right, #14222b 0%, #233D4D 45%, #2e4d61 75%, #182833 100%)',
+    gradient: 'linear-gradient(to right, #121e27 0%, #233D4D 45%, #2e4d61 75%, #16242e 100%)',
     border: '#3b617a',
     textColor: '#F5FBE6',
     ribbonColor: '#215E61',
-    texture: 'navy-morocco',
     accentGold: '#f0d78c',
   },
   {
-    gradient: 'linear-gradient(to right, #381a1f 0%, #52272e 45%, #6e333d 75%, #381a1f 100%)',
+    gradient: 'linear-gradient(to right, #33171b 0%, #52272e 45%, #6e333d 75%, #33171b 100%)',
     border: '#7a3e47',
     textColor: '#F5FBE6',
     ribbonColor: '#d4af37',
-    texture: 'burgundy-calf',
     accentGold: '#f3d995',
   },
   {
-    gradient: 'linear-gradient(to right, #1f3328 0%, #2e4a3b 45%, #3d614e 75%, #1f3328 100%)',
+    gradient: 'linear-gradient(to right, #1b2e23 0%, #2e4a3b 45%, #3d614e 75%, #1b2e23 100%)',
     border: '#4c7861',
     textColor: '#F5FBE6',
     ribbonColor: '#e5c158',
-    texture: 'forest-buckram',
     accentGold: '#ebd27d',
   },
   {
-    gradient: 'linear-gradient(to right, #3d2b1f 0%, #543b2b 45%, #6e4e39 75%, #3d2b1f 100%)',
+    gradient: 'linear-gradient(to right, #38261b 0%, #543b2b 45%, #6e4e39 75%, #38261b 100%)',
     border: '#7d5941',
     textColor: '#F5FBE6',
     ribbonColor: '#215E61',
-    texture: 'antique-cedar',
     accentGold: '#f0d78c',
   },
   {
-    gradient: 'linear-gradient(to right, #2a2538 0%, #3d3652 45%, #52496e 75%, #2a2538 100%)',
+    gradient: 'linear-gradient(to right, #242030 0%, #3d3652 45%, #52496e 75%, #242030 100%)',
     border: '#625882',
     textColor: '#F5FBE6',
     ribbonColor: '#e0c068',
-    texture: 'plum-velvet',
     accentGold: '#ebd27d',
   },
 ];
 
 const ROMAN_NUMERALS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV'];
+
+// Calculate spine width dynamically based on number of chapters
+function getBookSpineThickness(work: LiteraryWork): {
+  widthClass: string;
+  heightClass: string;
+  thicknessLabel: string;
+} {
+  if (work.type === 'book') {
+    const chCount = (work as BookWork).chapters?.length || 1;
+    if (chCount <= 1) {
+      return { widthClass: 'w-16 sm:w-20', heightClass: 'h-64 sm:h-76', thicknessLabel: 'Slender Volume' };
+    } else if (chCount <= 3) {
+      return { widthClass: 'w-20 sm:w-24', heightClass: 'h-68 sm:h-80', thicknessLabel: 'Standard Volume' };
+    } else if (chCount <= 6) {
+      return { widthClass: 'w-24 sm:w-28', heightClass: 'h-72 sm:h-84', thicknessLabel: 'Substantial Volume' };
+    } else {
+      return { widthClass: 'w-28 sm:w-34', heightClass: 'h-76 sm:h-88', thicknessLabel: 'Grand Tome' };
+    }
+  } else if (work.type === 'poem') {
+    return { widthClass: 'w-16 sm:w-18', heightClass: 'h-60 sm:h-72', thicknessLabel: 'Poetry Folio' };
+  } else {
+    return { widthClass: 'w-14 sm:w-16', heightClass: 'h-56 sm:h-68', thicknessLabel: 'Pocket Inscription' };
+  }
+}
 
 export const LibraryBookshelf: React.FC<LibraryBookshelfProps> = ({
   works,
@@ -93,16 +112,23 @@ export const LibraryBookshelf: React.FC<LibraryBookshelfProps> = ({
   const [showAddMenu, setShowAddMenu] = useState<boolean>(false);
   const [hoveredWorkId, setHoveredWorkId] = useState<string | null>(null);
 
-  // Keyboard escape listener to close bookshelf
+  // Inspected book detail modal state
+  const [inspectedWork, setInspectedWork] = useState<LiteraryWork | null>(null);
+
+  // Keyboard escape listener to close inspect modal or bookshelf
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
+      if (e.key === 'Escape') {
+        if (inspectedWork) {
+          setInspectedWork(null);
+        } else if (isOpen) {
+          onClose();
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, inspectedWork, onClose]);
 
   if (!isOpen) return null;
 
@@ -115,8 +141,8 @@ export const LibraryBookshelf: React.FC<LibraryBookshelfProps> = ({
     return w.quote.toLowerCase().includes(q) || w.maker.toLowerCase().includes(q);
   });
 
-  // Organize works into shelves (e.g. 6 to 8 volumes per shelf beam)
-  const VOLUMES_PER_SHELF = 8;
+  // Organize works into shelves (e.g. 6 to 7 books per shelf beam so books breathe naturally)
+  const VOLUMES_PER_SHELF = 6;
   const shelfRows: LiteraryWork[][] = [];
   for (let i = 0; i < filteredWorks.length; i += VOLUMES_PER_SHELF) {
     shelfRows.push(filteredWorks.slice(i, i + VOLUMES_PER_SHELF));
@@ -125,33 +151,39 @@ export const LibraryBookshelf: React.FC<LibraryBookshelfProps> = ({
     shelfRows.push([]);
   }
 
-  const hoveredWork = works.find((w) => w.id === hoveredWorkId);
+  const handleOpenInspectedBook = () => {
+    if (inspectedWork) {
+      const target = inspectedWork;
+      setInspectedWork(null);
+      onSelectWork(target);
+    }
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#0f181e] text-[#F5FBE6] animate-fadeIn select-none overflow-hidden">
+    <div className="fixed inset-0 z-50 flex flex-col bg-[#0e171c] text-[#F5FBE6] animate-fadeIn select-none overflow-hidden">
       
-      {/* 1. TOP LIBRARY CROWN CORNICE & NAVIGATION BAR */}
-      <header className="h-16 px-6 bg-[#16232b] border-b-2 border-[#2b424f] flex items-center justify-between shadow-xl shrink-0 z-20">
+      {/* 1. TOP LIBRARY CROWN NAVIGATION BAR */}
+      <header className="h-16 px-4 sm:px-8 bg-[#15222a] border-b-2 border-[#2b424f] flex items-center justify-between shadow-xl shrink-0 z-20">
         
-        {/* Left: Library Plaque */}
+        {/* Left: Writing Desk Return Button & Title */}
         <div className="flex items-center gap-3">
           <button
             onClick={onClose}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#215E61] hover:bg-[#1a4a4d] text-[#F5FBE6] text-xs font-semibold shadow-xs transition-colors cursor-pointer mr-2"
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-[#215E61] hover:bg-[#1a4a4d] text-[#F5FBE6] text-xs font-semibold shadow-xs transition-colors cursor-pointer"
           >
             <ArrowLeft size={14} />
-            <span>Writing Desk</span>
+            <span>Return to Desk</span>
           </button>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 ml-2">
             <div className="w-8 h-8 rounded-lg bg-[#215E61] flex items-center justify-center text-[#F5FBE6] shadow-sm">
               <BookOpen size={16} />
             </div>
             <div>
-              <h1 className="font-serif font-bold text-base md:text-lg text-[#F5FBE6] tracking-wide flex items-center gap-2">
-                <span>The Library Bookshelf</span>
+              <h1 className="font-serif font-bold text-base sm:text-lg text-[#F5FBE6] tracking-wide flex items-center gap-2">
+                <span>The Private Library Shelves</span>
                 <span className="text-[11px] font-sans font-normal text-[#8faec0] bg-[#223642] px-2 py-0.5 rounded-full">
-                  {filteredWorks.length} {filteredWorks.length === 1 ? 'Volume' : 'Volumes'}
+                  {filteredWorks.length} Volumes
                 </span>
               </h1>
             </div>
@@ -161,7 +193,7 @@ export const LibraryBookshelf: React.FC<LibraryBookshelfProps> = ({
         {/* Center: Search & Filter Tabs */}
         <div className="flex items-center gap-3">
           {/* Filter Pills */}
-          <div className="hidden md:flex items-center bg-[#0d161c] p-1 rounded-xl border border-[#273d4a] text-xs">
+          <div className="hidden md:flex items-center bg-[#0d161b] p-1 rounded-xl border border-[#273d4a] text-xs">
             {[
               { id: 'all', label: 'All Volumes' },
               { id: 'book', label: 'Books', icon: BookOpen },
@@ -190,8 +222,8 @@ export const LibraryBookshelf: React.FC<LibraryBookshelfProps> = ({
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search shelf by title or author..."
-              className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-[#0d161c] border border-[#273d4a] focus:border-[#215E61] text-[#F5FBE6] focus:outline-none placeholder-[#688899]"
+              placeholder="Search by title or author..."
+              className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-[#0d161b] border border-[#273d4a] focus:border-[#215E61] text-[#F5FBE6] focus:outline-none placeholder-[#688899]"
             />
           </div>
         </div>
@@ -247,11 +279,10 @@ export const LibraryBookshelf: React.FC<LibraryBookshelfProps> = ({
             )}
           </div>
 
-          {/* Close button */}
           <button
             onClick={onClose}
             className="p-1.5 rounded-xl text-[#8faec0] hover:text-[#F5FBE6] hover:bg-white/10 transition-colors cursor-pointer"
-            title="Exit Bookshelf"
+            title="Exit Bookshelf (ESC)"
           >
             <X size={20} />
           </button>
@@ -259,11 +290,10 @@ export const LibraryBookshelf: React.FC<LibraryBookshelfProps> = ({
 
       </header>
 
-      {/* 2. THE GRAND LIBRARY BOOKCASE CHAMBER (Expansive Full Height & Width) */}
-      <div className="flex-1 overflow-y-auto px-4 sm:px-12 md:px-20 py-8 relative bg-radial from-[#18262f] via-[#111a20] to-[#0a1014] flex flex-col justify-between">
+      {/* 2. GRAND MULTI-SHELF SCROLLABLE LIBRARY CHAMBER */}
+      <div className="flex-1 overflow-y-auto px-4 sm:px-12 md:px-16 py-10 relative bg-radial from-[#18262f] via-[#111a20] to-[#0a1014] flex flex-col justify-between">
         
-        {/* Bookshelf Wooden Outer Frame Columns */}
-        <div className="max-w-6xl w-full mx-auto space-y-16 py-4">
+        <div className="max-w-6xl w-full mx-auto space-y-20 py-4">
           
           {shelfRows.map((shelfBooks, shelfIndex) => {
             const roman = ROMAN_NUMERALS[shelfIndex] || `${shelfIndex + 1}`;
@@ -273,7 +303,7 @@ export const LibraryBookshelf: React.FC<LibraryBookshelfProps> = ({
               <section key={shelfIndex} className="relative">
                 
                 {/* Brass Plaque on Shelf Ledge Top */}
-                <div className="flex items-center justify-between mb-3 px-3">
+                <div className="flex items-center justify-between mb-3 px-4">
                   <div className="flex items-center gap-2.5">
                     <span className="w-2 h-2 rounded-full bg-[#d4af37] shadow-xs" />
                     <span className="text-xs font-serif uppercase tracking-[0.3em] text-[#d4af37] font-bold drop-shadow-xs">
@@ -285,46 +315,39 @@ export const LibraryBookshelf: React.FC<LibraryBookshelfProps> = ({
                   </div>
 
                   <span className="text-[11px] font-serif text-[#7091a4] italic hidden sm:inline">
-                    Cedar Beam Collection
+                    Handbound Inscriptions
                   </span>
                 </div>
 
-                {/* The Books on this shelf level */}
-                <div className="w-full relative bg-[#131d24]/60 rounded-t-lg border-x-4 border-t-2 border-[#2b4452]/50 pt-10 pb-0 px-6 sm:px-10 flex items-end justify-start gap-4 sm:gap-6 md:gap-7 overflow-x-auto min-h-[300px] sm:min-h-[340px]">
+                {/* THE BOOKS ON THIS SHELF (Balanced & with ample top headroom so tooltips are never cut) */}
+                <div className="w-full relative bg-[#131d24]/60 rounded-t-lg border-x-4 border-t-2 border-[#2b4452]/50 pt-24 pb-0 px-6 sm:px-12 flex items-end justify-center sm:justify-start gap-4 sm:gap-6 md:gap-8 overflow-x-auto min-h-[360px] sm:min-h-[400px]">
                   
-                  {/* Left Brass Bookend */}
-                  <div className="w-4 h-48 bg-gradient-to-r from-[#997328] via-[#d4af37] to-[#73531b] rounded-t-xs shadow-lg shrink-0 opacity-80 self-end mb-0 hidden sm:block" />
+                  {/* Left Antique Brass Bookend */}
+                  <div className="w-5 h-48 bg-gradient-to-r from-[#997328] via-[#d4af37] to-[#73531b] rounded-t-xs shadow-lg shrink-0 opacity-80 self-end mb-0 hidden sm:block" />
 
                   {shelfBooks.map((w, bookIdx) => {
                     const globalIdx = shelfIndex * VOLUMES_PER_SHELF + bookIdx;
                     const isSelected = w.id === selectedWorkId;
                     const isHovered = hoveredWorkId === w.id;
                     const theme = BOOK_SPINE_STYLES[globalIdx % BOOK_SPINE_STYLES.length];
+                    const { widthClass, heightClass, thicknessLabel } = getBookSpineThickness(w);
 
-                    // Substantial book sizing
                     let title = '';
                     let author = '';
-                    let height = 'h-64 sm:h-76 md:h-84';
-                    let width = 'w-18 sm:w-22 md:w-24';
                     let badge = '';
 
                     if (w.type === 'book') {
-                      title = w.title || 'Untitled Book';
-                      author = w.author || 'Author';
-                      height = bookIdx % 2 === 0 ? 'h-68 sm:h-80 md:h-88' : 'h-64 sm:h-76 md:h-84';
-                      width = 'w-20 sm:w-24 md:w-26';
-                      badge = `${w.chapters.length} Ch.`;
+                      const book = w as BookWork;
+                      title = book.title || 'Untitled Book';
+                      author = book.author || 'Author';
+                      badge = `${book.chapters?.length || 1} Ch.`;
                     } else if (w.type === 'poem') {
                       title = w.title || 'Poetry';
                       author = w.poet || 'Poet';
-                      height = 'h-60 sm:h-70 md:h-78';
-                      width = 'w-16 sm:w-20 md:w-22';
                       badge = w.form || 'Poem';
                     } else {
-                      title = w.maker ? `“${w.quote.slice(0, 20)}...”` : 'Quote';
+                      title = w.maker ? `“${w.quote.slice(0, 18)}...”` : 'Quote';
                       author = w.maker || 'Maker';
-                      height = 'h-56 sm:h-66 md:h-74';
-                      width = 'w-16 sm:w-18 md:w-20';
                       badge = 'Quote';
                     }
 
@@ -333,20 +356,20 @@ export const LibraryBookshelf: React.FC<LibraryBookshelfProps> = ({
                         key={w.id}
                         onMouseEnter={() => setHoveredWorkId(w.id)}
                         onMouseLeave={() => setHoveredWorkId(null)}
-                        onClick={() => onSelectWork(w)}
+                        onClick={() => setInspectedWork(w)}
                         style={{
                           background: theme.gradient,
                           boxShadow: isHovered 
-                            ? '0 25px 40px -10px rgba(0,0,0,0.8), 0 0 20px rgba(255,255,255,0.1), inset 5px 0 10px rgba(255,255,255,0.2), inset -5px 0 10px rgba(0,0,0,0.5)' 
-                            : '0 12px 24px -5px rgba(0,0,0,0.6), inset 4px 0 8px rgba(255,255,255,0.12), inset -4px 0 8px rgba(0,0,0,0.4)',
+                            ? '0 25px 45px -10px rgba(0,0,0,0.85), 0 0 25px rgba(255,255,255,0.12), inset 6px 0 12px rgba(255,255,255,0.22), inset -6px 0 12px rgba(0,0,0,0.5)' 
+                            : '0 12px 24px -5px rgba(0,0,0,0.6), inset 4px 0 8px rgba(255,255,255,0.14), inset -4px 0 8px rgba(0,0,0,0.4)',
                           transform: isHovered 
-                            ? 'translateY(-30px) scale(1.05)' 
+                            ? 'translateY(-34px) scale(1.05)' 
                             : isSelected 
                             ? 'translateY(-12px)' 
                             : 'translateY(0)',
                           transition: 'all 0.28s cubic-bezier(0.16, 1, 0.3, 1)',
                         }}
-                        className={`relative ${width} ${height} rounded-t-sm border-t border-x cursor-pointer shrink-0 flex flex-col justify-between items-center py-4 px-1.5 group select-none`}
+                        className={`relative ${widthClass} ${heightClass} rounded-t-sm border-t border-x cursor-pointer shrink-0 flex flex-col justify-between items-center py-4 px-1.5 group select-none`}
                       >
                         {/* 1. Raised Leather/Cloth Ribs at Top */}
                         <div className="w-full space-y-1">
@@ -354,18 +377,21 @@ export const LibraryBookshelf: React.FC<LibraryBookshelfProps> = ({
                           <div className="w-full h-[1px] bg-white/20 shadow-xs" />
                         </div>
 
-                        {/* Top Category / Type Emblem */}
-                        <div className="text-[9px] uppercase font-serif tracking-[0.2em] font-bold text-center opacity-85 px-1 truncate w-full" style={{ color: theme.accentGold }}>
+                        {/* Top Category / Chapter count badge */}
+                        <div 
+                          className="text-[9px] uppercase font-serif tracking-[0.2em] font-bold text-center opacity-90 px-1 truncate w-full"
+                          style={{ color: theme.accentGold }}
+                        >
                           {badge}
                         </div>
 
                         {/* Hanging Ribbon Bookmark Over Shelf */}
                         <div 
-                          className="absolute -bottom-6 left-1/2 -translate-x-1/2 w-3 h-8 rounded-b-xs shadow-md transition-transform group-hover:scale-y-110"
+                          className="absolute -bottom-6 left-1/2 -translate-x-1/2 w-3 h-8 rounded-b-xs shadow-md transition-transform group-hover:scale-y-115"
                           style={{ backgroundColor: theme.ribbonColor }}
                         />
 
-                        {/* 2. Main Spine Gold Debossed Title */}
+                        {/* 2. Spine Gold Debossed Title */}
                         <div className="flex-1 flex items-center justify-center overflow-hidden my-3 w-full">
                           <span
                             style={{
@@ -383,7 +409,7 @@ export const LibraryBookshelf: React.FC<LibraryBookshelfProps> = ({
                         <div className="w-full text-center px-1 overflow-hidden">
                           <span 
                             style={{ color: theme.textColor }}
-                            className="text-[9px] sm:text-[10px] font-serif uppercase tracking-wider opacity-80 truncate block"
+                            className="text-[9px] sm:text-[10px] font-serif uppercase tracking-wider opacity-85 truncate block"
                           >
                             {author}
                           </span>
@@ -395,26 +421,12 @@ export const LibraryBookshelf: React.FC<LibraryBookshelfProps> = ({
                           <div className="w-full h-[3px] bg-black/50 shadow-xs rounded-full" />
                         </div>
 
-                        {/* Floating Pull-Out Tag & Details Preview on Hover */}
+                        {/* Floating Pull-Out Tag & Details Preview on Hover (Full Room - NEVER Cut) */}
                         {isHovered && (
-                          <div className="absolute -top-14 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-[#F5FBE6] text-[#233D4D] rounded-xl shadow-2xl text-xs font-serif font-bold whitespace-nowrap z-50 border-2 border-[#215E61] flex items-center gap-1.5 animate-bounce-short">
-                            <Sparkles size={12} className="text-[#215E61]" />
-                            <span>Pull "{title}" to Desk</span>
+                          <div className="absolute -top-16 left-1/2 -translate-x-1/2 px-4 py-2 bg-[#F5FBE6] text-[#233D4D] rounded-xl shadow-2xl text-xs font-serif font-bold whitespace-nowrap z-50 border-2 border-[#215E61] flex items-center gap-2 animate-bounce-short">
+                            <Sparkles size={13} className="text-[#215E61]" />
+                            <span>Click to Inspect "{title}"</span>
                           </div>
-                        )}
-
-                        {/* Delete volume action */}
-                        {works.length > 1 && isHovered && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onRequestDelete(w);
-                            }}
-                            className="absolute top-2 right-1.5 p-1.5 rounded-full bg-black/70 text-red-300 hover:text-white hover:bg-red-800 transition-colors shadow-sm"
-                            title="Remove Volume from Shelf"
-                          >
-                            <Trash2 size={11} />
-                          </button>
                         )}
                       </div>
                     );
@@ -424,7 +436,7 @@ export const LibraryBookshelf: React.FC<LibraryBookshelfProps> = ({
                   {isLastShelf && (
                     <button
                       onClick={() => setShowAddMenu(true)}
-                      className="w-18 sm:w-22 md:w-24 h-60 sm:h-70 md:h-78 border-2 border-dashed border-[#406173] hover:border-[#F5FBE6] hover:bg-white/5 rounded-t-sm flex flex-col items-center justify-center gap-2 text-[#799fb5] hover:text-[#F5FBE6] transition-all cursor-pointer shrink-0 group mb-0"
+                      className="w-18 sm:w-22 h-60 sm:h-72 border-2 border-dashed border-[#406173] hover:border-[#F5FBE6] hover:bg-white/5 rounded-t-sm flex flex-col items-center justify-center gap-2 text-[#799fb5] hover:text-[#F5FBE6] transition-all cursor-pointer shrink-0 group mb-0"
                       title="Bind a new volume on this shelf"
                     >
                       <div className="w-9 h-9 rounded-full bg-[#1b2b34] group-hover:bg-[#215E61] flex items-center justify-center text-[#F5FBE6] shadow-sm transition-colors">
@@ -436,14 +448,13 @@ export const LibraryBookshelf: React.FC<LibraryBookshelfProps> = ({
                     </button>
                   )}
 
-                  {/* Right Brass Bookend */}
-                  <div className="w-4 h-48 bg-gradient-to-r from-[#73531b] via-[#d4af37] to-[#997328] rounded-t-xs shadow-lg shrink-0 opacity-80 self-end mb-0 hidden sm:block ml-auto" />
+                  {/* Right Antique Brass Bookend */}
+                  <div className="w-5 h-48 bg-gradient-to-r from-[#73531b] via-[#d4af37] to-[#997328] rounded-t-xs shadow-lg shrink-0 opacity-80 self-end mb-0 hidden sm:block ml-auto" />
 
                 </div>
 
                 {/* HEAVY SOLID CEDAR / MAHOGANY WOODEN SHELF LEDGE */}
                 <div className="w-full h-8 rounded-b-xs bg-gradient-to-r from-[#3e2413] via-[#61391e] to-[#3e2413] border-t-3 border-[#8c572f] shadow-2xl relative flex items-center justify-between px-4">
-                  {/* Wood Grain & Depth Inner Shadow */}
                   <div className="absolute inset-0 bg-black/20" />
                   <div className="absolute -bottom-3 left-0 right-0 h-3 bg-[#1e1108] shadow-inner" />
                   
@@ -461,14 +472,134 @@ export const LibraryBookshelf: React.FC<LibraryBookshelfProps> = ({
         {/* Bottom Ambient Hallmarks */}
         <div className="max-w-6xl w-full mx-auto pt-6 border-t border-[#233742] flex items-center justify-between text-xs text-[#7091a4] font-serif shrink-0">
           <span className="italic">
-            Tip: Pulling a book smoothly opens it on your writing desk with autosave active.
+            Tip: Book thickness on shelf reflects chapter count. Click any volume to inspect its contents.
           </span>
           <span className="hidden sm:inline">
-            Press <kbd className="px-1.5 py-0.5 rounded bg-[#1c2d37] border border-[#2e4757] text-[10px] text-[#F5FBE6]">ESC</kbd> or click Writing Desk to return.
+            Press <kbd className="px-1.5 py-0.5 rounded bg-[#1c2d37] border border-[#2e4757] text-[10px] text-[#F5FBE6]">ESC</kbd> to return to desk.
           </span>
         </div>
 
       </div>
+
+      {/* 3. BOOK INSPECTION DOSSIER MODAL (Shows details + Continue button!) */}
+      {inspectedWork && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0a1116]/80 backdrop-blur-md animate-fadeIn">
+          <div className="relative w-full max-w-lg bg-[#FAFDF3] rounded-2xl shadow-2xl border-2 border-[#215E61]/30 p-6 sm:p-8 book-paper-texture animate-scaleUp text-[#233D4D]">
+            
+            {/* Close Button */}
+            <button
+              onClick={() => setInspectedWork(null)}
+              className="absolute top-4 right-4 p-1.5 text-[#233D4D]/50 hover:text-[#215E61] hover:bg-black/5 rounded-full transition-colors cursor-pointer"
+              title="Close and inspect other books"
+            >
+              <X size={20} />
+            </button>
+
+            {/* Header Badge */}
+            <div className="flex items-center gap-2 mb-3">
+              <span className="w-2 h-2 rounded-full bg-[#215E61]" />
+              <span className="text-xs uppercase font-serif tracking-[0.25em] text-[#215E61] font-bold">
+                {inspectedWork.type === 'book' && 'Bound Book Volume'}
+                {inspectedWork.type === 'poem' && 'Poetry Broadsheet'}
+                {inspectedWork.type === 'quote' && 'Inscribed Quotation'}
+              </span>
+            </div>
+
+            {/* Title & Subtitle */}
+            <h2 className="text-2xl sm:text-3xl font-serif font-bold text-[#233D4D] leading-tight mb-1">
+              {inspectedWork.type === 'quote' 
+                ? `Words of ${inspectedWork.maker || 'Unknown'}` 
+                : inspectedWork.title}
+            </h2>
+
+            {inspectedWork.type === 'book' && (inspectedWork as BookWork).subtitle && (
+              <p className="text-xs font-serif italic text-[#536D7D] mb-4">
+                {(inspectedWork as BookWork).subtitle}
+              </p>
+            )}
+
+            {/* Author / Maker Hallmark */}
+            <p className="text-sm font-serif text-[#215E61] font-semibold mb-4">
+              by {inspectedWork.type === 'quote' 
+                ? (inspectedWork.maker || 'Unknown') 
+                : (inspectedWork.type === 'poem' ? inspectedWork.poet : (inspectedWork as BookWork).author)}
+              {inspectedWork.type === 'book' && (inspectedWork as BookWork).year && ` · ${(inspectedWork as BookWork).year}`}
+            </p>
+
+            <div className="w-full h-[1px] bg-[#215E61]/20 my-4" />
+
+            {/* Body Content / Summary */}
+            <div className="space-y-3 max-h-60 overflow-y-auto pr-1 text-xs font-serif leading-relaxed text-[#233D4D]/90">
+              {inspectedWork.type === 'book' && (
+                <>
+                  <div className="bg-[#215E61]/5 p-3 rounded-xl border border-[#215E61]/15 space-y-1">
+                    <div className="font-bold text-[#215E61] uppercase tracking-wider text-[10px]">
+                      Structure & Contents
+                    </div>
+                    <div>Total Chapters: <strong>{(inspectedWork as BookWork).chapters.length}</strong></div>
+                    <div className="text-[#536D7D] italic">
+                      {(inspectedWork as BookWork).chapters.map((c, i) => `${i + 1}. ${c.title}`).join(' · ')}
+                    </div>
+                  </div>
+
+                  {(inspectedWork as BookWork).about && (
+                    <div>
+                      <strong className="text-[#215E61] block mb-1">About & Context:</strong>
+                      <p className="italic text-[#536D7D]">{(inspectedWork as BookWork).about}</p>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {inspectedWork.type === 'poem' && (
+                <div className="bg-[#215E61]/5 p-4 rounded-xl border border-[#215E61]/15 italic">
+                  {(inspectedWork as PoemWork).body.split('\n').slice(0, 4).join('\n')}
+                  {(inspectedWork as PoemWork).body.split('\n').length > 4 && '\n...'}
+                </div>
+              )}
+
+              {inspectedWork.type === 'quote' && (
+                <div className="bg-[#215E61]/5 p-4 rounded-xl border border-[#215E61]/15 italic text-sm text-center">
+                  “{(inspectedWork as QuoteWork).quote}”
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons: Continue to Desk vs Cancel */}
+            <div className="mt-6 pt-4 border-t border-[#215E61]/20 flex items-center justify-between gap-3">
+              <button
+                onClick={() => {
+                  const target = inspectedWork;
+                  setInspectedWork(null);
+                  onRequestDelete(target);
+                }}
+                className="p-2 text-red-700/60 hover:text-red-700 hover:bg-red-50 rounded-xl text-xs transition-colors cursor-pointer"
+                title="Remove Volume from Shelf"
+              >
+                <Trash2 size={16} />
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setInspectedWork(null)}
+                  className="px-4 py-2 rounded-xl border border-[#215E61]/25 hover:bg-black/5 text-[#233D4D] text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  Inspect Other Books
+                </button>
+
+                <button
+                  onClick={handleOpenInspectedBook}
+                  className="px-5 py-2 rounded-xl bg-[#215E61] hover:bg-[#1a4a4d] text-[#F5FBE6] text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Sparkles size={14} />
+                  <span>Open & Write in This Volume</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );

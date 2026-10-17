@@ -22,7 +22,7 @@ import { PoemImageModal } from './components/PoemImageModal';
 import { VercelDeployGuideModal } from './components/VercelDeployGuideModal';
 import { BackupImportModal } from './components/BackupImportModal';
 import { soundEngine } from './utils/ambientSound';
-import { Minimize2 } from 'lucide-react';
+import { Minimize2, ZoomIn, ZoomOut } from 'lucide-react';
 
 export function App() {
   const [works, setWorks] = useState<LiteraryWork[]>(() => loadWorks());
@@ -34,6 +34,12 @@ export function App() {
 
   // Focus & Zen Mode State
   const [isZenMode, setIsZenMode] = useState<boolean>(false);
+
+  // Workspace Zoom State (scales desk manuscript without scaling top ribbon)
+  const [zoom, setZoom] = useState<number>(100);
+
+  // Book View Mode: 'single' (focused chapter) vs 'all' (continuous multi-chapter manuscript)
+  const [bookViewMode, setBookViewMode] = useState<'single' | 'all'>('single');
 
   // Microsoft Word-Style Formatting State
   const [fontFamily, setFontFamily] = useState<string>("'EB Garamond', Georgia, serif");
@@ -149,10 +155,13 @@ export function App() {
   };
 
   // Chapter specific handlers for Books
-  const handleUpdateChapter = (fields: Partial<{ title: string; subtitle: string; content: string }>) => {
+  const handleUpdateChapter = (
+    fields: Partial<{ title: string; subtitle: string; content: string }>,
+    chapterId?: string
+  ) => {
     if (!currentWork || currentWork.type !== 'book') return;
     const book = currentWork as BookWork;
-    const targetId = activeChapterId || book.chapters[0]?.id;
+    const targetId = chapterId || activeChapterId || book.chapters[0]?.id;
     const updatedChapters = book.chapters.map((ch) =>
       ch.id === targetId ? { ...ch, ...fields } : ch
     );
@@ -180,6 +189,56 @@ export function App() {
     });
     setActiveChapterId(newCh.id);
   };
+
+  const handleDeleteChapter = (chapterId: string) => {
+    if (!currentWork || currentWork.type !== 'book') return;
+    const book = currentWork as BookWork;
+    if (book.chapters.length <= 1) return;
+    const targetChapter = book.chapters.find((c) => c.id === chapterId);
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Remove Chapter',
+      message: `Are you sure you wish to delete "${targetChapter?.title || 'this chapter'}"? Any text within this chapter will be permanently removed.`,
+      confirmLabel: 'Delete Chapter',
+      isDestructive: true,
+      onConfirm: () => {
+        const remaining = book.chapters.filter((c) => c.id !== chapterId);
+        handleUpdateWork({
+          ...book,
+          chapters: remaining,
+          updatedAt: Date.now(),
+        });
+        if (activeChapterId === chapterId) {
+          setActiveChapterId(remaining[0]?.id || '');
+        }
+        setConfirmDialog((d) => ({ ...d, isOpen: false }));
+      },
+    });
+  };
+
+  const handleMoveChapter = (chapterId: string, direction: 'up' | 'down') => {
+    if (!currentWork || currentWork.type !== 'book') return;
+    const book = currentWork as BookWork;
+    const idx = book.chapters.findIndex((c) => c.id === chapterId);
+    if (idx < 0) return;
+    if (direction === 'up' && idx === 0) return;
+    if (direction === 'down' && idx === book.chapters.length - 1) return;
+
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    const newChapters = [...book.chapters];
+    const [removed] = newChapters.splice(idx, 1);
+    newChapters.splice(targetIdx, 0, removed);
+    handleUpdateWork({
+      ...book,
+      chapters: newChapters,
+      updatedAt: Date.now(),
+    });
+  };
+
+  // Workspace Zoom handlers
+  const handleZoomIn = () => setZoom((z) => Math.min(160, z + 10));
+  const handleZoomOut = () => setZoom((z) => Math.max(60, z - 10));
+  const handleResetZoom = () => setZoom(100);
 
   const handleInsertOrnament = (ornament: string) => {
     if (!currentWork) return;
@@ -384,6 +443,12 @@ export function App() {
           activeChapterId={activeChapterId}
           onSelectChapter={(id) => setActiveChapterId(id)}
           onAddChapter={handleAddChapter}
+          bookViewMode={bookViewMode}
+          onToggleBookViewMode={setBookViewMode}
+          zoom={zoom}
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          onResetZoom={handleResetZoom}
         />
       )}
 
@@ -399,57 +464,97 @@ export function App() {
         </button>
       )}
 
-      {/* 2. CENTER DESK / WRITING CANVAS (Scrolls smoothly beneath fixed bar) */}
-      <main className="flex-1 overflow-y-auto px-4 sm:px-6">
-        {currentWork ? (
-          <>
-            {currentWork.type === 'book' && (
-              <BookEditor
-                book={currentWork as BookWork}
-                activeChapterId={activeChapterId}
-                fontFamily={fontFamily}
-                fontSize={fontSize}
-                textAlignment={textAlignment}
-                hasDropcap={hasDropcap}
-                onChange={handleUpdateWork}
-                onUpdateChapterTitle={(title) => handleUpdateChapter({ title })}
-                onUpdateChapterSubtitle={(subtitle) => handleUpdateChapter({ subtitle })}
-                onUpdateChapterContent={(content) => handleUpdateChapter({ content })}
-              />
-            )}
+      {/* 2. CENTER DESK / WRITING CANVAS (Scrolls smoothly beneath fixed bar, scales with zoom) */}
+      <main className="flex-1 overflow-y-auto px-4 sm:px-6 relative pb-28">
+        <div 
+          style={{ 
+            transform: `scale(${zoom / 100})`, 
+            transformOrigin: 'top center',
+            transition: 'transform 0.15s ease-out'
+          }}
+          className="w-full flex flex-col items-center"
+        >
+          {currentWork ? (
+            <>
+              {currentWork.type === 'book' && (
+                <BookEditor
+                  book={currentWork as BookWork}
+                  activeChapterId={activeChapterId}
+                  fontFamily={fontFamily}
+                  fontSize={fontSize}
+                  textAlignment={textAlignment}
+                  hasDropcap={hasDropcap}
+                  bookViewMode={bookViewMode}
+                  onToggleBookViewMode={setBookViewMode}
+                  onSelectChapter={(id) => setActiveChapterId(id)}
+                  onAddChapter={handleAddChapter}
+                  onDeleteChapter={handleDeleteChapter}
+                  onMoveChapter={handleMoveChapter}
+                  onChange={handleUpdateWork}
+                  onUpdateChapterTitle={(title, chId) => handleUpdateChapter({ title }, chId)}
+                  onUpdateChapterSubtitle={(subtitle, chId) => handleUpdateChapter({ subtitle }, chId)}
+                  onUpdateChapterContent={(content, chId) => handleUpdateChapter({ content }, chId)}
+                />
+              )}
 
-            {currentWork.type === 'poem' && (
-              <PoemEditor
-                poem={currentWork as PoemWork}
-                fontFamily={fontFamily}
-                fontSize={fontSize}
-                textAlignment={textAlignment}
-                onChange={handleUpdateWork}
-              />
-            )}
+              {currentWork.type === 'poem' && (
+                <PoemEditor
+                  poem={currentWork as PoemWork}
+                  fontFamily={fontFamily}
+                  fontSize={fontSize}
+                  textAlignment={textAlignment}
+                  onChange={handleUpdateWork}
+                />
+              )}
 
-            {currentWork.type === 'quote' && (
-              <QuoteEditor
-                quote={currentWork as QuoteWork}
-                fontFamily={fontFamily}
-                fontSize={fontSize}
-                textAlignment={textAlignment}
-                onChange={handleUpdateWork}
-              />
-            )}
-          </>
-        ) : (
-          <div className="text-center py-24 font-serif text-[#536D7D]">
-            <p className="mb-4">No volume selected on your shelf.</p>
-            <button
-              onClick={() => setShowBookshelf(true)}
-              className="px-4 py-2 bg-[#215E61] text-[#F5FBE6] rounded-xl text-xs font-semibold cursor-pointer"
-            >
-              Browse Library Bookshelf
-            </button>
-          </div>
-        )}
+              {currentWork.type === 'quote' && (
+                <QuoteEditor
+                  quote={currentWork as QuoteWork}
+                  fontFamily={fontFamily}
+                  fontSize={fontSize}
+                  textAlignment={textAlignment}
+                  onChange={handleUpdateWork}
+                />
+              )}
+            </>
+          ) : (
+            <div className="text-center py-24 font-serif text-[#536D7D]">
+              <p className="mb-4">No volume selected on your shelf.</p>
+              <button
+                onClick={() => setShowBookshelf(true)}
+                className="px-4 py-2 bg-[#215E61] text-[#F5FBE6] rounded-xl text-xs font-semibold cursor-pointer"
+              >
+                Browse Library Bookshelf
+              </button>
+            </div>
+          )}
+        </div>
       </main>
+
+      {/* Floating Desk Zoom Controls (Scales workspace without affecting top bar) */}
+      <div className="fixed bottom-4 right-5 z-30 flex items-center bg-[#FAFDF3]/95 backdrop-blur-md border border-[#215E61]/30 rounded-xl shadow-lg px-2 py-1 text-xs text-[#215E61] select-none gap-1">
+        <button
+          onClick={handleZoomOut}
+          className="p-1 hover:bg-[#215E61]/10 rounded font-bold cursor-pointer transition-colors"
+          title="Zoom Out Workspace (-10%)"
+        >
+          <ZoomOut size={13} />
+        </button>
+        <button
+          onClick={handleResetZoom}
+          className="px-1.5 py-0.5 hover:bg-[#215E61]/10 rounded font-mono text-[11px] font-semibold cursor-pointer transition-colors"
+          title="Reset Zoom to 100%"
+        >
+          {zoom}%
+        </button>
+        <button
+          onClick={handleZoomIn}
+          className="p-1 hover:bg-[#215E61]/10 rounded font-bold cursor-pointer transition-colors"
+          title="Zoom In Workspace (+10%)"
+        >
+          <ZoomIn size={13} />
+        </button>
+      </div>
 
       {/* 3. MULTI-TIER SCROLLABLE LIBRARY BOOKSHELF MENU */}
       <LibraryBookshelf

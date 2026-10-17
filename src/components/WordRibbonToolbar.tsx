@@ -18,7 +18,9 @@ import {
   Minimize2, 
   Check, 
   Library, 
-  Layers 
+  Layers,
+  ZoomIn,
+  ZoomOut
 } from 'lucide-react';
 
 interface WordRibbonToolbarProps {
@@ -47,6 +49,13 @@ interface WordRibbonToolbarProps {
   activeChapterId?: string;
   onSelectChapter?: (chId: string) => void;
   onAddChapter?: () => void;
+  bookViewMode?: 'single' | 'all';
+  onToggleBookViewMode?: (mode: 'single' | 'all') => void;
+  // Workspace Zoom
+  zoom?: number;
+  onZoomIn?: () => void;
+  onZoomOut?: () => void;
+  onResetZoom?: () => void;
 }
 
 export const WordRibbonToolbar: React.FC<WordRibbonToolbarProps> = ({
@@ -74,6 +83,12 @@ export const WordRibbonToolbar: React.FC<WordRibbonToolbarProps> = ({
   activeChapterId,
   onSelectChapter,
   onAddChapter,
+  bookViewMode = 'single',
+  onToggleBookViewMode,
+  zoom = 100,
+  onZoomIn,
+  onZoomOut,
+  onResetZoom,
 }) => {
   const [showExportMenu, setShowExportMenu] = useState<boolean>(false);
   const [showChapterMenu, setShowChapterMenu] = useState<boolean>(false);
@@ -159,6 +174,32 @@ export const WordRibbonToolbar: React.FC<WordRibbonToolbarProps> = ({
             </div>
           )}
 
+          {/* Book View Mode Switcher: Single Chapter vs All Chapters continuous */}
+          {isBook && onToggleBookViewMode && (
+            <div className="flex items-center bg-white rounded-lg border border-[#215E61]/25 p-0.5 text-xs shadow-2xs">
+              <button
+                onClick={() => onToggleBookViewMode('single')}
+                className={`px-2 py-1 rounded text-xs font-serif transition-colors flex items-center gap-1 cursor-pointer ${
+                  bookViewMode === 'single' ? 'bg-[#215E61] text-[#F5FBE6] font-semibold' : 'text-[#233D4D] hover:text-[#215E61]'
+                }`}
+                title="Focus on single chapter"
+              >
+                <BookOpen size={12} />
+                <span className="hidden xl:inline">Single</span>
+              </button>
+              <button
+                onClick={() => onToggleBookViewMode('all')}
+                className={`px-2 py-1 rounded text-xs font-serif transition-colors flex items-center gap-1 cursor-pointer ${
+                  bookViewMode === 'all' ? 'bg-[#215E61] text-[#F5FBE6] font-semibold' : 'text-[#233D4D] hover:text-[#215E61]'
+                }`}
+                title="Continuous All Chapters Workspace"
+              >
+                <Layers size={12} />
+                <span className="hidden xl:inline">All Ch.</span>
+              </button>
+            </div>
+          )}
+
           {/* Font Selector */}
           <div className="flex items-center bg-white rounded-lg border border-[#215E61]/20 px-1 py-0.5 text-xs">
             <select
@@ -191,6 +232,33 @@ export const WordRibbonToolbar: React.FC<WordRibbonToolbarProps> = ({
               A+
             </button>
           </div>
+
+          {/* Workspace Zoom controls */}
+          {onZoomIn && onZoomOut && (
+            <div className="flex items-center bg-white rounded-lg border border-[#215E61]/20 px-1 py-0.5 text-xs hidden sm:flex">
+              <button
+                onClick={onZoomOut}
+                className="p-1 hover:bg-[#215E61]/10 rounded text-[#215E61] cursor-pointer"
+                title="Zoom Out Workspace (-10%)"
+              >
+                <ZoomOut size={12} />
+              </button>
+              <button
+                onClick={onResetZoom}
+                className="px-1 font-mono text-[11px] text-[#536D7D] hover:text-[#215E61] cursor-pointer"
+                title="Reset Workspace Zoom to 100%"
+              >
+                {zoom}%
+              </button>
+              <button
+                onClick={onZoomIn}
+                className="p-1 hover:bg-[#215E61]/10 rounded text-[#215E61] cursor-pointer"
+                title="Zoom In Workspace (+10%)"
+              >
+                <ZoomIn size={12} />
+              </button>
+            </div>
+          )}
 
           <div className="h-5 w-[1px] bg-[#215E61]/20 mx-1 hidden sm:block" />
 
