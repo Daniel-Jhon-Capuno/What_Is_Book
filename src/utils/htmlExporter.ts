@@ -80,7 +80,7 @@ function generateBookReaderHtml(book: BookWork): string {
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;800&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
-    :root {
+    :root, body[data-theme="cream"] {
       --morning-paper: #F5FBE6;
       --morning-paper-dark: #e8f1d3;
       --silent-grove: #215E61;
@@ -88,6 +88,36 @@ function generateBookReaderHtml(book: BookWork): string {
       --blue-monolith: #233D4D;
       --blue-monolith-muted: #536d7d;
       --page-shadow: 0 15px 35px -5px rgba(35, 61, 77, 0.2), 0 0 0 1px rgba(33, 94, 97, 0.12);
+    }
+
+    body[data-theme="white"] {
+      --morning-paper: #FFFFFF;
+      --morning-paper-dark: #F3F4F6;
+      --silent-grove: #1E3A8A;
+      --silent-grove-light: #2563EB;
+      --blue-monolith: #111827;
+      --blue-monolith-muted: #4B5563;
+      --page-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.12);
+    }
+
+    body[data-theme="black"] {
+      --morning-paper: #11171C;
+      --morning-paper-dark: #1A2228;
+      --silent-grove: #E0C068;
+      --silent-grove-light: #F5D78A;
+      --blue-monolith: #FAFDF3;
+      --blue-monolith-muted: #9BA9B3;
+      --page-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.15);
+    }
+
+    body[data-theme="teal"] {
+      --morning-paper: #215E61;
+      --morning-paper-dark: #194649;
+      --silent-grove: #E0C068;
+      --silent-grove-light: #F5D78A;
+      --blue-monolith: #FAFDF3;
+      --blue-monolith-muted: #C3E0DC;
+      --page-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.2);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -100,16 +130,16 @@ function generateBookReaderHtml(book: BookWork): string {
       flex-direction: column;
       overflow-x: hidden;
       background-image: 
-        radial-gradient(#215E6108 1px, transparent 1px),
-        radial-gradient(#233D4D05 1px, #F5FBE6 1px);
+        radial-gradient(rgba(33, 94, 97, 0.08) 1px, transparent 1px);
       background-size: 20px 20px;
+      transition: background-color 0.25s ease, color 0.25s ease;
     }
 
     /* Top navigation bar */
     .reader-header {
-      background: rgba(245, 251, 230, 0.95);
+      background: var(--morning-paper);
       backdrop-filter: blur(8px);
-      border-bottom: 1px solid rgba(33, 94, 97, 0.15);
+      border-bottom: 1px solid rgba(125, 125, 125, 0.2);
       padding: 12px 24px;
       display: flex;
       justify-content: space-between;
@@ -136,6 +166,49 @@ function generateBookReaderHtml(book: BookWork): string {
       align-items: center;
       gap: 12px;
     }
+
+    .theme-switcher {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(125, 125, 125, 0.08);
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid rgba(125, 125, 125, 0.2);
+    }
+
+    .theme-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      opacity: 0.8;
+      margin-right: 2px;
+      color: var(--blue-monolith);
+    }
+
+    .theme-btn {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.15s ease;
+      padding: 0;
+    }
+
+    .theme-btn:hover {
+      transform: scale(1.15);
+    }
+
+    .theme-btn.active {
+      box-shadow: 0 0 0 2px var(--silent-grove);
+    }
+
+    .theme-btn[data-theme-val="cream"] { background: #FAFDF3; border-color: #215E61; }
+    .theme-btn[data-theme-val="white"] { background: #FFFFFF; border-color: #888888; }
+    .theme-btn[data-theme-val="black"] { background: #11171C; border-color: #E0C068; }
+    .theme-btn[data-theme-val="teal"] { background: #215E61; border-color: #E0C068; }
 
     .btn {
       background: transparent;
@@ -486,6 +559,13 @@ function generateBookReaderHtml(book: BookWork): string {
       <span>${escapeHtml(book.title)}</span>
     </div>
     <div class="header-controls">
+      <div class="theme-switcher">
+        <span class="theme-label">Paper:</span>
+        <button type="button" class="theme-btn" data-theme-val="cream" onclick="setTheme('cream')" title="Cream Paper"></button>
+        <button type="button" class="theme-btn" data-theme-val="white" onclick="setTheme('white')" title="White Paper"></button>
+        <button type="button" class="theme-btn" data-theme-val="black" onclick="setTheme('black')" title="Obsidian Black"></button>
+        <button type="button" class="theme-btn" data-theme-val="teal" onclick="setTheme('teal')" title="Silent Grove Teal"></button>
+      </div>
       <button class="btn" onclick="toggleToc()">☰ Table of Contents</button>
       <button class="btn" onclick="window.print()">🖨️ Print Book</button>
     </div>
@@ -658,6 +738,21 @@ function generateBookReaderHtml(book: BookWork): string {
       }
     });
 
+    function setTheme(t) {
+      document.body.setAttribute('data-theme', t);
+      try { localStorage.setItem('book_reader_theme', t); } catch(e) {}
+      document.querySelectorAll('.theme-btn').forEach(b => {
+        b.classList.toggle('active', b.getAttribute('data-theme-val') === t);
+      });
+    }
+
+    try {
+      const savedTheme = localStorage.getItem('book_reader_theme') || 'cream';
+      setTheme(savedTheme);
+    } catch(e) {
+      setTheme('cream');
+    }
+
     buildToc();
     updateReader();
   </script>
@@ -676,11 +771,36 @@ function generatePoemReaderHtml(poem: PoemWork): string {
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Marck+Script&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
-    :root {
+    :root, body[data-theme="cream"] {
       --morning-paper: #F5FBE6;
       --silent-grove: #215E61;
       --blue-monolith: #233D4D;
     }
+
+    body[data-theme="white"] {
+      --morning-paper: #FFFFFF;
+      --silent-grove: #1E3A8A;
+      --blue-monolith: #111827;
+      background-color: #F8F9FA !important;
+      background-image: none !important;
+    }
+
+    body[data-theme="black"] {
+      --morning-paper: #11171C;
+      --silent-grove: #E0C068;
+      --blue-monolith: #FAFDF3;
+      background-color: #0A0D10 !important;
+      background-image: none !important;
+    }
+
+    body[data-theme="teal"] {
+      --morning-paper: #215E61;
+      --silent-grove: #E0C068;
+      --blue-monolith: #FAFDF3;
+      background-color: #164043 !important;
+      background-image: none !important;
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       background-color: var(--morning-paper);
@@ -692,20 +812,64 @@ function generatePoemReaderHtml(poem: PoemWork): string {
       align-items: center;
       padding: 40px 20px 80px;
       background-image: 
-        radial-gradient(#215E6108 1px, transparent 1px),
-        radial-gradient(#233D4D05 1px, #F5FBE6 1px);
+        radial-gradient(rgba(33, 94, 97, 0.08) 1px, transparent 1px);
       background-size: 20px 20px;
+      transition: background-color 0.25s ease, color 0.25s ease;
     }
 
     .toolbar {
       width: 100%;
       max-width: 680px;
       display: flex;
-      justify-content: flex-end;
+      justify-content: space-between;
+      align-items: center;
       margin-bottom: 24px;
       gap: 12px;
       font-family: 'Plus Jakarta Sans', sans-serif;
     }
+
+    .theme-switcher {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(125, 125, 125, 0.08);
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid rgba(125, 125, 125, 0.2);
+    }
+
+    .theme-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      opacity: 0.8;
+      margin-right: 2px;
+      color: var(--blue-monolith);
+    }
+
+    .theme-btn {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.15s ease;
+      padding: 0;
+    }
+
+    .theme-btn:hover {
+      transform: scale(1.15);
+    }
+
+    .theme-btn.active {
+      box-shadow: 0 0 0 2px var(--silent-grove);
+    }
+
+    .theme-btn[data-theme-val="cream"] { background: #FAFDF3; border-color: #215E61; }
+    .theme-btn[data-theme-val="white"] { background: #FFFFFF; border-color: #888888; }
+    .theme-btn[data-theme-val="black"] { background: #11171C; border-color: #E0C068; }
+    .theme-btn[data-theme-val="teal"] { background: #215E61; border-color: #E0C068; }
 
     .btn {
       background: transparent;
@@ -840,6 +1004,13 @@ function generatePoemReaderHtml(poem: PoemWork): string {
 </head>
 <body>
   <div class="toolbar">
+    <div class="theme-switcher">
+      <span class="theme-label">Paper:</span>
+      <button type="button" class="theme-btn" data-theme-val="cream" onclick="setTheme('cream')" title="Cream Paper"></button>
+      <button type="button" class="theme-btn" data-theme-val="white" onclick="setTheme('white')" title="White Paper"></button>
+      <button type="button" class="theme-btn" data-theme-val="black" onclick="setTheme('black')" title="Obsidian Black"></button>
+      <button type="button" class="theme-btn" data-theme-val="teal" onclick="setTheme('teal')" title="Silent Grove Teal"></button>
+    </div>
     <button class="btn" onclick="window.print()">🖨️ Print Poem</button>
   </div>
 
@@ -865,6 +1036,23 @@ function generatePoemReaderHtml(poem: PoemWork): string {
       </div>
     ` : ''}
   </main>
+
+  <script>
+    function setTheme(t) {
+      document.body.setAttribute('data-theme', t);
+      try { localStorage.setItem('poem_reader_theme', t); } catch(e) {}
+      document.querySelectorAll('.theme-btn').forEach(b => {
+        b.classList.toggle('active', b.getAttribute('data-theme-val') === t);
+      });
+    }
+
+    try {
+      const savedTheme = localStorage.getItem('poem_reader_theme') || 'cream';
+      setTheme(savedTheme);
+    } catch(e) {
+      setTheme('cream');
+    }
+  </script>
 </body>
 </html>`;
 }
@@ -880,11 +1068,36 @@ function generateQuoteReaderHtml(quote: QuoteWork): string {
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
-    :root {
+    :root, body[data-theme="cream"] {
       --morning-paper: #F5FBE6;
       --silent-grove: #215E61;
       --blue-monolith: #233D4D;
     }
+
+    body[data-theme="white"] {
+      --morning-paper: #FFFFFF;
+      --silent-grove: #1E3A8A;
+      --blue-monolith: #111827;
+      background-color: #F8F9FA !important;
+      background-image: none !important;
+    }
+
+    body[data-theme="black"] {
+      --morning-paper: #11171C;
+      --silent-grove: #E0C068;
+      --blue-monolith: #FAFDF3;
+      background-color: #0A0D10 !important;
+      background-image: none !important;
+    }
+
+    body[data-theme="teal"] {
+      --morning-paper: #215E61;
+      --silent-grove: #E0C068;
+      --blue-monolith: #FAFDF3;
+      background-color: #164043 !important;
+      background-image: none !important;
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       background-color: var(--morning-paper);
@@ -897,9 +1110,9 @@ function generateQuoteReaderHtml(quote: QuoteWork): string {
       justify-content: center;
       padding: 30px 20px;
       background-image: 
-        radial-gradient(#215E6108 1px, transparent 1px),
-        radial-gradient(#233D4D05 1px, #F5FBE6 1px);
+        radial-gradient(rgba(33, 94, 97, 0.08) 1px, transparent 1px);
       background-size: 20px 20px;
+      transition: background-color 0.25s ease, color 0.25s ease;
     }
 
     .card {
@@ -964,7 +1177,54 @@ function generateQuoteReaderHtml(quote: QuoteWork): string {
     .actions {
       margin-top: 24px;
       font-family: 'Plus Jakarta Sans', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
     }
+
+    .theme-switcher {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(125, 125, 125, 0.08);
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid rgba(125, 125, 125, 0.2);
+    }
+
+    .theme-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      opacity: 0.8;
+      margin-right: 2px;
+      color: var(--blue-monolith);
+    }
+
+    .theme-btn {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.15s ease;
+      padding: 0;
+    }
+
+    .theme-btn:hover {
+      transform: scale(1.15);
+    }
+
+    .theme-btn.active {
+      box-shadow: 0 0 0 2px var(--silent-grove);
+    }
+
+    .theme-btn[data-theme-val="cream"] { background: #FAFDF3; border-color: #215E61; }
+    .theme-btn[data-theme-val="white"] { background: #FFFFFF; border-color: #888888; }
+    .theme-btn[data-theme-val="black"] { background: #11171C; border-color: #E0C068; }
+    .theme-btn[data-theme-val="teal"] { background: #215E61; border-color: #E0C068; }
 
     .btn {
       background: transparent;
@@ -995,8 +1255,32 @@ function generateQuoteReaderHtml(quote: QuoteWork): string {
   </div>
 
   <div class="actions">
+    <div class="theme-switcher">
+      <span class="theme-label">Paper:</span>
+      <button type="button" class="theme-btn" data-theme-val="cream" onclick="setTheme('cream')" title="Cream Paper"></button>
+      <button type="button" class="theme-btn" data-theme-val="white" onclick="setTheme('white')" title="White Paper"></button>
+      <button type="button" class="theme-btn" data-theme-val="black" onclick="setTheme('black')" title="Obsidian Black"></button>
+      <button type="button" class="theme-btn" data-theme-val="teal" onclick="setTheme('teal')" title="Silent Grove Teal"></button>
+    </div>
     <button class="btn" onclick="window.print()">🖨️ Print Quote</button>
   </div>
+
+  <script>
+    function setTheme(t) {
+      document.body.setAttribute('data-theme', t);
+      try { localStorage.setItem('quote_reader_theme', t); } catch(e) {}
+      document.querySelectorAll('.theme-btn').forEach(b => {
+        b.classList.toggle('active', b.getAttribute('data-theme-val') === t);
+      });
+    }
+
+    try {
+      const savedTheme = localStorage.getItem('quote_reader_theme') || 'cream';
+      setTheme(savedTheme);
+    } catch(e) {
+      setTheme('cream');
+    }
+  </script>
 </body>
 </html>`;
 }

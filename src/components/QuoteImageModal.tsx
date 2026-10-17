@@ -12,7 +12,9 @@ import {
   AlignLeft, 
   AlignCenter, 
   AlignRight, 
-  AlignJustify 
+  AlignJustify,
+  Palette,
+  Type
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -21,65 +23,88 @@ interface QuoteImageModalProps {
   onClose: () => void;
 }
 
-type PaletteType = 'morning-paper' | 'silent-grove' | 'blue-monolith' | 'antique-parchment';
 type RatioType = '1:1' | '9:16' | '4:5' | '16:9';
 type FontType = 'eb-garamond' | 'cormorant' | 'cinzel' | 'newsreader';
 type AlignmentType = 'center' | 'left' | 'right' | 'justify';
 
+const PRESET_THEMES = [
+  { id: 'morning-paper', name: 'Morning Paper', bg: '#FAFDF3', text: '#233D4D', maker: '#215E61' },
+  { id: 'pure-white', name: 'White & Black', bg: '#FFFFFF', text: '#111827', maker: '#000000' },
+  { id: 'dark-obsidian', name: 'Obsidian Black', bg: '#11171C', text: '#F5FBE6', maker: '#E0C068' },
+  { id: 'silent-grove', name: 'Silent Grove', bg: '#215E61', text: '#F5FBE6', maker: '#A7E1D8' },
+  { id: 'blue-monolith', name: 'Blue Monolith', bg: '#233D4D', text: '#F5FBE6', maker: '#FEE440' },
+  { id: 'antique-parchment', name: 'Parchment', bg: '#F6F1E5', text: '#2A241E', maker: '#785434' },
+];
+
+const BG_SWATCHES = [
+  { label: 'Cream', value: '#FAFDF3' },
+  { label: 'White', value: '#FFFFFF' },
+  { label: 'Black', value: '#11171C' },
+  { label: 'Teal', value: '#215E61' },
+  { label: 'Navy', value: '#233D4D' },
+];
+
+const TEXT_SWATCHES = [
+  { label: 'Charcoal', value: '#233D4D' },
+  { label: 'Black', value: '#000000' },
+  { label: 'White', value: '#FFFFFF' },
+  { label: 'Cream', value: '#F5FBE6' },
+  { label: 'Gold', value: '#E0C068' },
+  { label: 'Teal', value: '#215E61' },
+];
+
+function isColorDark(hexColor: string): boolean {
+  let hex = hexColor.replace('#', '');
+  if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+  const r = parseInt(hex.substring(0, 2), 16) || 0;
+  const g = parseInt(hex.substring(2, 4), 16) || 0;
+  const b = parseInt(hex.substring(4, 6), 16) || 0;
+  const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+  return yiq < 128;
+}
+
 export const QuoteImageModal: React.FC<QuoteImageModalProps> = ({ quote, onClose }) => {
   const cardRef = useRef<HTMLDivElement>(null);
-  const [palette, setPalette] = useState<PaletteType>('morning-paper');
+
+  // Background and Text color states with granular control
+  const [bgColor, setBgColor] = useState<string>('#FAFDF3');
+  const [textColor, setTextColor] = useState<string>('#233D4D');
+  const [makerColor, setMakerColor] = useState<string>('#215E61');
+
   const [ratio, setRatio] = useState<RatioType>('1:1');
   const [font, setFont] = useState<FontType>('cinzel');
   const [alignment, setAlignment] = useState<AlignmentType>('center');
-  const [verticalAlign, setVerticalAlign] = useState<'center' | 'top' | 'bottom'>('center');
   const [fontSize, setFontSize] = useState<number>(20);
   const [showBorder, setShowBorder] = useState<boolean>(true);
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
 
-  // Palette color styles
-  const getPaletteStyles = () => {
-    switch (palette) {
-      case 'silent-grove':
-        return {
-          bg: '#215E61',
-          text: '#F5FBE6',
-          maker: '#E2F3CB',
-          quoteMark: '#3EA3A8',
-          subtext: '#C4E1D9',
-          border: 'rgba(245, 251, 230, 0.4)',
-        };
-      case 'blue-monolith':
-        return {
-          bg: '#233D4D',
-          text: '#F5FBE6',
-          maker: '#FEE440',
-          quoteMark: '#4A7C9D',
-          subtext: '#A7C4D4',
-          border: 'rgba(245, 251, 230, 0.35)',
-        };
-      case 'antique-parchment':
-        return {
-          bg: '#FAF8F0',
-          text: '#1F2421',
-          maker: '#215E61',
-          quoteMark: '#997B66',
-          subtext: '#6B705C',
-          border: 'rgba(33, 94, 97, 0.25)',
-        };
-      case 'morning-paper':
-      default:
-        return {
-          bg: '#F5FBE6',
-          text: '#233D4D',
-          maker: '#215E61',
-          quoteMark: 'rgba(33, 94, 97, 0.35)',
-          subtext: '#536D7D',
-          border: 'rgba(33, 94, 97, 0.3)',
-        };
+  const applyPreset = (preset: typeof PRESET_THEMES[0]) => {
+    setBgColor(preset.bg);
+    setTextColor(preset.text);
+    setMakerColor(preset.maker);
+  };
+
+  const handleBgColorChange = (newBg: string) => {
+    setBgColor(newBg);
+    const dark = isColorDark(newBg);
+    if (dark && isColorDark(textColor)) {
+      setTextColor('#F5FBE6');
+      setMakerColor('#E0C068');
+    } else if (!dark && !isColorDark(textColor)) {
+      setTextColor('#233D4D');
+      setMakerColor('#215E61');
     }
   };
+
+  const handleTextColorChange = (newText: string) => {
+    setTextColor(newText);
+    setMakerColor(newText);
+  };
+
+  const darkBg = isColorDark(bgColor);
+  const borderColor = darkBg ? 'rgba(245, 251, 230, 0.35)' : 'rgba(33, 94, 97, 0.35)';
+  const quoteMarkColor = darkBg ? 'rgba(245, 251, 230, 0.35)' : 'rgba(33, 94, 97, 0.3)';
 
   const getFontFamily = () => {
     switch (font) {
@@ -95,9 +120,7 @@ export const QuoteImageModal: React.FC<QuoteImageModalProps> = ({ quote, onClose
     }
   };
 
-  const currentStyles = getPaletteStyles();
-
-  // Aspect ratio dimensions for preview container
+  // Dimensions for preview container
   const getRatioStyle = () => {
     switch (ratio) {
       case '9:16':
@@ -123,7 +146,7 @@ export const QuoteImageModal: React.FC<QuoteImageModalProps> = ({ quote, onClose
 
       const dataUrl = await toPng(el, {
         cacheBust: true,
-        pixelRatio: 3, // Crisp high-DPI export
+        pixelRatio: 3,
         width: fullWidth,
         height: fullHeight,
         style: {
@@ -194,29 +217,127 @@ export const QuoteImageModal: React.FC<QuoteImageModalProps> = ({ quote, onClose
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-[#233D4D]/70 backdrop-blur-sm overflow-y-auto">
-      <div className="relative w-full max-w-4xl bg-[#F5FBE6] rounded-2xl shadow-2xl border border-[#215E61]/20 flex flex-col md:flex-row overflow-hidden my-4 max-h-[94vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-[#233D4D]/75 backdrop-blur-sm overflow-y-auto">
+      <div className="relative w-full max-w-5xl bg-[#F5FBE6] rounded-2xl shadow-2xl border border-[#215E61]/25 flex flex-col md:flex-row overflow-hidden my-4 max-h-[94vh]">
         
         {/* Controls Sidebar */}
-        <div className="w-full md:w-80 p-5 sm:p-6 bg-[#ebf3d3]/80 border-r border-[#215E61]/15 flex flex-col justify-between overflow-y-auto">
-          <div className="space-y-5">
-            <div className="flex items-center justify-between">
+        <div className="w-full md:w-88 p-5 sm:p-6 bg-[#FAFDF3] border-r border-[#215E61]/15 flex flex-col justify-between overflow-y-auto space-y-5">
+          <div className="space-y-4">
+            
+            <div className="flex items-center justify-between pb-3 border-b border-[#215E61]/10">
               <div className="flex items-center gap-2 text-[#215E61] font-semibold tracking-wide uppercase text-xs">
                 <Sparkles size={16} />
-                Quote Snapshot Studio
+                <span>Quote Snapshot Studio</span>
               </div>
               <button 
                 onClick={onClose}
-                className="md:hidden p-1 text-[#233D4D] hover:text-[#215E61]"
+                className="md:hidden p-1 text-[#233D4D] hover:text-[#215E61] cursor-pointer"
               >
                 <X size={20} />
               </button>
             </div>
 
-            {/* Writing Alignment Selection (NEW) */}
+            {/* Preset Themes */}
             <div>
-              <label className="block text-xs font-semibold text-[#215E61] uppercase tracking-wider mb-2">
-                Writing Alignment
+              <label className="block text-xs font-semibold text-[#215E61] uppercase tracking-wider mb-1.5">
+                Preset Themes
+              </label>
+              <div className="grid grid-cols-2 gap-1.5">
+                {PRESET_THEMES.map((preset) => {
+                  const isSelected = bgColor.toLowerCase() === preset.bg.toLowerCase();
+                  return (
+                    <button
+                      key={preset.id}
+                      onClick={() => applyPreset(preset)}
+                      className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium border text-left transition-all cursor-pointer ${
+                        isSelected 
+                          ? 'border-[#215E61] bg-white text-[#215E61] shadow-2xs font-bold ring-1 ring-[#215E61]' 
+                          : 'border-[#215E61]/20 bg-white/60 text-[#233D4D] hover:bg-white'
+                      }`}
+                    >
+                      <span 
+                        className="w-3.5 h-3.5 rounded-full border border-black/15 shrink-0" 
+                        style={{ backgroundColor: preset.bg }}
+                      />
+                      <span className="truncate">{preset.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Custom Background Color Selection */}
+            <div>
+              <label className="block text-xs font-semibold text-[#215E61] uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                <Palette size={13} />
+                <span>Paper Background:</span>
+              </label>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {BG_SWATCHES.map(s => (
+                  <button
+                    key={s.value}
+                    onClick={() => handleBgColorChange(s.value)}
+                    className={`px-2 py-0.5 rounded text-[11px] border flex items-center gap-1 transition-all cursor-pointer ${
+                      bgColor.toLowerCase() === s.value.toLowerCase()
+                        ? 'border-[#215E61] ring-2 ring-[#215E61]/30 font-bold bg-white'
+                        : 'border-[#215E61]/20 hover:border-[#215E61] bg-white/60'
+                    }`}
+                  >
+                    <span className="w-2.5 h-2.5 rounded-full border border-black/20" style={{ backgroundColor: s.value }} />
+                    <span>{s.label}</span>
+                  </button>
+                ))}
+                {/* Custom Color Input */}
+                <label className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] border border-[#215E61]/25 hover:border-[#215E61] bg-white cursor-pointer" title="Pick custom background color">
+                  <input
+                    type="color"
+                    value={bgColor}
+                    onChange={(e) => handleBgColorChange(e.target.value)}
+                    className="w-3.5 h-3.5 rounded cursor-pointer border-0 p-0"
+                  />
+                  <span className="font-mono text-[10px] text-[#536D7D]">{bgColor}</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Custom Text Color Selection */}
+            <div>
+              <label className="block text-xs font-semibold text-[#215E61] uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                <Type size={13} />
+                <span>Text / Ink Color:</span>
+              </label>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {TEXT_SWATCHES.map(s => (
+                  <button
+                    key={s.value}
+                    onClick={() => handleTextColorChange(s.value)}
+                    className={`px-2 py-0.5 rounded text-[11px] border flex items-center gap-1 transition-all cursor-pointer ${
+                      textColor.toLowerCase() === s.value.toLowerCase()
+                        ? 'border-[#215E61] ring-2 ring-[#215E61]/30 font-bold bg-white'
+                        : 'border-[#215E61]/20 hover:border-[#215E61] bg-white/60'
+                    }`}
+                  >
+                    <span className="w-2.5 h-2.5 rounded-full border border-black/20" style={{ backgroundColor: s.value }} />
+                    <span>{s.label}</span>
+                  </button>
+                ))}
+                {/* Custom Text Input */}
+                <label className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] border border-[#215E61]/25 hover:border-[#215E61] bg-white cursor-pointer" title="Pick custom text/ink color">
+                  <input
+                    type="color"
+                    value={textColor}
+                    onChange={(e) => handleTextColorChange(e.target.value)}
+                    className="w-3.5 h-3.5 rounded cursor-pointer border-0 p-0"
+                  />
+                  <span className="font-mono text-[10px] text-[#536D7D]">{textColor}</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Writing Alignment Selection */}
+            <div>
+              <label className="block text-xs font-semibold text-[#215E61] uppercase tracking-wider mb-1.5">
+                Alignment
               </label>
               <div className="grid grid-cols-4 gap-1.5">
                 {[
@@ -228,45 +349,14 @@ export const QuoteImageModal: React.FC<QuoteImageModalProps> = ({ quote, onClose
                   <button
                     key={item.id}
                     onClick={() => setAlignment(item.id as AlignmentType)}
-                    className={`py-2 px-1 rounded-lg text-center border transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${
+                    className={`py-1.5 px-1 rounded-lg text-center border transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${
                       alignment === item.id
                         ? 'border-[#215E61] bg-[#215E61] text-[#F5FBE6] font-semibold shadow-2xs'
                         : 'border-[#215E61]/20 bg-white/70 text-[#233D4D] hover:bg-white text-xs'
                     }`}
                   >
-                    <item.icon size={14} />
+                    <item.icon size={13} />
                     <span className="text-[10px]">{item.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Color Palette Presets */}
-            <div>
-              <label className="block text-xs font-semibold text-[#215E61] uppercase tracking-wider mb-2">
-                Color Palette
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { id: 'morning-paper', name: 'Morning Paper', bg: '#F5FBE6' },
-                  { id: 'silent-grove', name: 'Silent Grove', bg: '#215E61' },
-                  { id: 'blue-monolith', name: 'Blue Monolith', bg: '#233D4D' },
-                  { id: 'antique-parchment', name: 'Parchment', bg: '#FAF8F0' },
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => setPalette(item.id as PaletteType)}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border text-left transition-all cursor-pointer ${
-                      palette === item.id 
-                        ? 'border-[#215E61] bg-white text-[#215E61] shadow-xs ring-1 ring-[#215E61]' 
-                        : 'border-[#215E61]/20 bg-[#F5FBE6] text-[#233D4D] hover:border-[#215E61]/50'
-                    }`}
-                  >
-                    <span 
-                      className="w-3.5 h-3.5 rounded-full border border-black/10 shrink-0" 
-                      style={{ backgroundColor: item.bg }}
-                    />
-                    <span className="truncate">{item.name}</span>
                   </button>
                 ))}
               </div>
@@ -274,7 +364,7 @@ export const QuoteImageModal: React.FC<QuoteImageModalProps> = ({ quote, onClose
 
             {/* Ratio Selection */}
             <div>
-              <label className="block text-xs font-semibold text-[#215E61] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <label className="block text-xs font-semibold text-[#215E61] uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
                 <Ratio size={14} /> Aspect Ratio
               </label>
               <div className="grid grid-cols-4 gap-1.5">
@@ -287,98 +377,79 @@ export const QuoteImageModal: React.FC<QuoteImageModalProps> = ({ quote, onClose
                   <button
                     key={item.id}
                     onClick={() => setRatio(item.id as RatioType)}
-                    className={`p-2 rounded-lg text-center border transition-all cursor-pointer ${
+                    className={`p-1.5 rounded-lg text-center border transition-all cursor-pointer ${
                       ratio === item.id
-                        ? 'border-[#215E61] bg-[#215E61] text-[#F5FBE6] font-semibold'
+                        ? 'border-[#215E61] bg-[#215E61] text-[#F5FBE6] font-semibold shadow-2xs'
                         : 'border-[#215E61]/20 bg-white/70 text-[#233D4D] hover:bg-white text-xs'
                     }`}
                   >
-                    <div className="text-xs">{item.label}</div>
+                    <div className="text-xs font-bold">{item.label}</div>
                     <div className="text-[10px] opacity-75">{item.sub}</div>
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Typography */}
-            <div>
-              <label className="block text-xs font-semibold text-[#215E61] uppercase tracking-wider mb-2">
-                Book Typography
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { id: 'cinzel', name: 'Cinzel (Classical)' },
-                  { id: 'eb-garamond', name: 'EB Garamond' },
-                  { id: 'cormorant', name: 'Cormorant' },
-                  { id: 'newsreader', name: 'Newsreader' },
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => setFont(item.id as FontType)}
-                    className={`p-2 rounded-lg text-xs border text-center transition-all cursor-pointer ${
-                      font === item.id
-                        ? 'border-[#215E61] bg-white text-[#215E61] font-semibold shadow-xs'
-                        : 'border-[#215E61]/20 bg-[#F5FBE6] text-[#233D4D] hover:bg-white'
-                    }`}
-                  >
-                    {item.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Font Size & Frame Toggles */}
-            <div className="space-y-3 pt-2 border-t border-[#215E61]/15">
+            {/* Font & Size */}
+            <div className="space-y-2">
               <div>
-                <div className="flex justify-between text-xs text-[#233D4D] mb-1">
-                  <span>Font Size</span>
-                  <span>{fontSize}px</span>
+                <label className="block text-xs font-semibold text-[#215E61] uppercase tracking-wider mb-1">
+                  Typography
+                </label>
+                <select
+                  value={font}
+                  onChange={(e) => setFont(e.target.value as FontType)}
+                  className="w-full bg-white border border-[#215E61]/30 rounded-lg px-2.5 py-1.5 text-xs text-[#233D4D] focus:outline-none focus:border-[#215E61]"
+                >
+                  <option value="cinzel">Cinzel (Classical Heading)</option>
+                  <option value="eb-garamond">EB Garamond (Fine Literature)</option>
+                  <option value="cormorant">Cormorant Garamond (Poetic)</option>
+                  <option value="newsreader">Newsreader (Editorial)</option>
+                </select>
+              </div>
+
+              <div>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="font-semibold text-[#215E61]">Font Size</span>
+                  <span className="font-mono text-[#536D7D]">{fontSize}px</span>
                 </div>
                 <input
                   type="range"
-                  min="15"
-                  max="34"
+                  min="14"
+                  max="32"
                   value={fontSize}
                   onChange={(e) => setFontSize(Number(e.target.value))}
                   className="w-full accent-[#215E61] cursor-pointer"
                 />
               </div>
-
-              <label className="flex items-center gap-2 text-xs text-[#233D4D] cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={showBorder}
-                  onChange={(e) => setShowBorder(e.target.checked)}
-                  className="accent-[#215E61] rounded"
-                />
-                <span>Include Ornamental Border</span>
-              </label>
             </div>
+
           </div>
 
-          {/* Action Buttons */}
-          <div className="space-y-2 pt-5 border-t border-[#215E61]/15">
+          {/* Action Export Buttons */}
+          <div className="pt-4 border-t border-[#215E61]/15 space-y-2">
             <button
               onClick={handleDownload}
               disabled={isExporting}
-              className="w-full py-2.5 px-4 bg-[#215E61] hover:bg-[#1b4d50] text-[#F5FBE6] rounded-xl font-medium text-sm flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer disabled:opacity-50"
+              className="w-full py-2.5 bg-[#215E61] hover:bg-[#1a4a4d] text-[#F5FBE6] rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer disabled:opacity-50"
             >
-              <Download size={16} />
-              {isExporting ? 'Generating High-Res...' : 'Download Image (.PNG)'}
+              <Download size={14} />
+              <span>{isExporting ? 'Generating High-Res PNG...' : 'Download PNG Snapshot'}</span>
             </button>
 
             <button
               onClick={handleCopyClipboard}
-              className="w-full py-2.5 px-4 bg-white/80 hover:bg-white text-[#233D4D] border border-[#215E61]/30 rounded-xl font-medium text-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
+              className="w-full py-2 bg-white border border-[#215E61]/30 hover:border-[#215E61] text-[#215E61] rounded-xl font-semibold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
             >
-              {copied ? <Check size={16} className="text-[#215E61]" /> : <Copy size={16} />}
-              {copied ? 'Copied to Clipboard!' : 'Copy to Clipboard'}
+              {copied ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
+              <span>{copied ? 'Copied to Clipboard!' : 'Copy to Clipboard'}</span>
             </button>
           </div>
+
         </div>
 
         {/* Live Card Preview Area */}
-        <div className="flex-1 p-6 md:p-8 flex flex-col items-center justify-center bg-[#F5FBE6] overflow-auto relative">
+        <div className="flex-1 p-6 md:p-8 flex flex-col items-center justify-center bg-[#182329]/15 overflow-auto relative">
           <button
             onClick={onClose}
             className="hidden md:flex absolute top-5 right-5 p-2 text-[#233D4D]/60 hover:text-[#215E61] rounded-full hover:bg-black/5 transition-all cursor-pointer"
@@ -395,26 +466,26 @@ export const QuoteImageModal: React.FC<QuoteImageModalProps> = ({ quote, onClose
             ref={cardRef}
             style={{
               ...getRatioStyle(),
-              backgroundColor: currentStyles.bg,
-              color: currentStyles.text,
+              backgroundColor: bgColor,
+              color: textColor,
               fontFamily: getFontFamily(),
             }}
-            className="relative flex flex-col justify-between p-8 md:p-10 shadow-xl transition-all duration-300 select-none shrink-0"
+            className="relative flex flex-col justify-between p-8 md:p-10 shadow-2xl transition-all duration-200 select-none shrink-0"
           >
             {/* Optional ornamental border */}
             {showBorder && (
               <div 
                 className="absolute inset-3 border pointer-events-none rounded-sm transition-colors duration-200"
-                style={{ borderColor: currentStyles.border }}
+                style={{ borderColor: borderColor }}
               >
                 <div 
-                  className="absolute inset-1.5 border border-dashed pointer-events-none opacity-50"
-                  style={{ borderColor: currentStyles.border }}
+                  className="absolute inset-1.5 border border-dashed pointer-events-none opacity-45"
+                  style={{ borderColor: borderColor }}
                 />
               </div>
             )}
 
-            {/* Top: Large quotation mark aligned with setting */}
+            {/* Top: Large quotation mark */}
             <div className={`flex pt-2 ${
               alignment === 'left' ? 'justify-start pl-2' : 
               alignment === 'right' ? 'justify-end pr-2' : 
@@ -422,7 +493,7 @@ export const QuoteImageModal: React.FC<QuoteImageModalProps> = ({ quote, onClose
             }`}>
               <span 
                 className="text-5xl md:text-6xl leading-none font-serif select-none"
-                style={{ color: currentStyles.quoteMark }}
+                style={{ color: quoteMarkColor }}
               >
                 “
               </span>
@@ -446,7 +517,7 @@ export const QuoteImageModal: React.FC<QuoteImageModalProps> = ({ quote, onClose
               </p>
             </div>
 
-            {/* Bottom: Maker Name & Context (BELOW) aligned with setting */}
+            {/* Bottom: Maker Name & Context (BELOW) */}
             <div className={`pt-4 pb-2 flex flex-col ${
               alignment === 'left' ? 'items-start text-left pl-4' :
               alignment === 'right' ? 'items-end text-right pr-4' :
@@ -454,16 +525,16 @@ export const QuoteImageModal: React.FC<QuoteImageModalProps> = ({ quote, onClose
             }`}>
               {/* Divider line / flourish */}
               <div 
-                className={`w-12 h-[1px] mb-3 relative opacity-60 ${
+                className={`w-12 h-[1px] mb-3 relative opacity-70 ${
                   alignment === 'left' ? 'mr-auto' :
                   alignment === 'right' ? 'ml-auto' :
                   'mx-auto'
                 }`}
-                style={{ backgroundColor: currentStyles.maker }}
+                style={{ backgroundColor: makerColor }}
               >
                 <span 
                   className="absolute -top-1.5 left-1/2 -translate-x-1/2 text-[9px] px-1"
-                  style={{ backgroundColor: currentStyles.bg, color: currentStyles.maker }}
+                  style={{ backgroundColor: bgColor, color: makerColor }}
                 >
                   ✦
                 </span>
@@ -472,40 +543,23 @@ export const QuoteImageModal: React.FC<QuoteImageModalProps> = ({ quote, onClose
               {/* Name of the Maker (BELOW THE QUOTE) */}
               <h4 
                 className="text-base md:text-lg font-bold tracking-widest uppercase font-serif"
-                style={{ color: currentStyles.maker }}
+                style={{ color: makerColor }}
               >
-                {quote.maker || 'Unknown Maker'}
+                {quote.maker || 'Unknown'}
               </h4>
 
-              {/* Source / Context / Year */}
+              {/* Origin / Context / Year */}
               {(quote.about || quote.year) && (
                 <p 
-                  className="text-xs md:text-sm mt-1 max-w-[85%] italic truncate"
-                  style={{ color: currentStyles.subtext }}
+                  className="text-xs italic mt-1 font-serif opacity-80"
+                  style={{ color: textColor }}
                 >
-                  {quote.about}
-                  {quote.year ? ` (${quote.year})` : ''}
+                  {quote.about} {quote.year && `(${quote.year})`}
                 </p>
               )}
-
-              {/* Small discrete watermarking / hallmark */}
-              <div 
-                className={`text-[9px] uppercase tracking-widest mt-4 opacity-40 font-sans ${
-                  alignment === 'left' ? 'mr-auto' :
-                  alignment === 'right' ? 'ml-auto' :
-                  'mx-auto'
-                }`}
-                style={{ color: currentStyles.text }}
-              >
-                Scribe & Parchment
-              </div>
             </div>
 
           </div>
-
-          <p className="text-xs text-[#536D7D] mt-4 italic">
-            Exports crisp high-resolution 300 DPI image ready for posting or printing.
-          </p>
         </div>
 
       </div>
