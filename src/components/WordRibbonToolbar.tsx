@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { LiteraryWork, BookWork, PoemWork, QuoteWork, AutoSaveInterval } from '../types';
+import type { LiteraryWork, BookWork, AutoSaveInterval } from '../types';
 import { 
   Bold, 
   Italic, 
@@ -12,13 +12,13 @@ import {
   FileCode, 
   Image, 
   SlidersHorizontal, 
-  Sparkles, 
   Plus, 
   ChevronDown, 
   Maximize2, 
   Minimize2, 
   Check, 
-  Clock 
+  Library, 
+  Layers 
 } from 'lucide-react';
 
 interface WordRibbonToolbarProps {
@@ -38,6 +38,7 @@ interface WordRibbonToolbarProps {
   onToggleZenMode: () => void;
   onOpenDetails: () => void;
   onOpenSimulation: () => void;
+  onOpenBookshelf: () => void;
   onExportHtml: () => void;
   onOpenSnapshot?: () => void;
   onOpenBackupModal: () => void;
@@ -64,6 +65,7 @@ export const WordRibbonToolbar: React.FC<WordRibbonToolbarProps> = ({
   onToggleZenMode,
   onOpenDetails,
   onOpenSimulation,
+  onOpenBookshelf,
   onExportHtml,
   onOpenSnapshot,
   onOpenBackupModal,
@@ -83,21 +85,33 @@ export const WordRibbonToolbar: React.FC<WordRibbonToolbarProps> = ({
     : 'Just now';
 
   return (
-    <div className="bg-[#FAFDF3] border-b border-[#215E61]/15 px-4 py-2 sticky top-0 z-30 shadow-xs">
+    <div className="bg-[#FAFDF3] border-b-2 border-[#215E61]/25 px-4 py-2 sticky top-0 z-40 shadow-xs backdrop-blur-md select-none shrink-0">
       <div className="max-w-6xl mx-auto flex items-center justify-between gap-3 flex-wrap">
         
-        {/* Left Section: Word-style Formatting Tools */}
-        <div className="flex items-center gap-1.5 flex-wrap">
+        {/* Left Section: Bookshelf Trigger & Word-style Tools */}
+        <div className="flex items-center gap-2 flex-wrap">
           
+          {/* Bookshelf Menu Button (Pulls up the 3D Library Bookshelf) */}
+          <button
+            onClick={onOpenBookshelf}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#215E61] hover:bg-[#1a4a4d] text-[#F5FBE6] text-xs font-serif font-bold shadow-xs transition-all cursor-pointer"
+            title="Open Interactive Library Bookshelf"
+          >
+            <Library size={14} />
+            <span>Bookshelf Menu</span>
+          </button>
+
+          <div className="h-5 w-[1px] bg-[#215E61]/25 mx-1 hidden sm:block" />
+
           {/* Chapter Selector Dropdown (for Books) */}
           {isBook && bookWork && (
-            <div className="relative mr-2">
+            <div className="relative">
               <button
                 onClick={() => setShowChapterMenu(!showChapterMenu)}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#215E61]/25 hover:border-[#215E61] bg-white text-xs font-serif font-bold text-[#215E61] shadow-2xs transition-all cursor-pointer"
               >
                 <BookOpen size={13} />
-                <span className="max-w-[150px] truncate">{currentChapter?.title || 'Chapter 1'}</span>
+                <span className="max-w-[140px] truncate">{currentChapter?.title || 'Chapter 1'}</span>
                 <ChevronDown size={12} className="opacity-60" />
               </button>
 
@@ -254,7 +268,7 @@ export const WordRibbonToolbar: React.FC<WordRibbonToolbarProps> = ({
           {/* Details & Context Drawer Button */}
           <button
             onClick={onOpenDetails}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#215E61]/30 hover:border-[#215E61] bg-white hover:bg-white text-xs font-semibold text-[#215E61] transition-all cursor-pointer shadow-2xs"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#215E61]/30 hover:border-[#215E61] bg-white text-xs font-semibold text-[#215E61] transition-all cursor-pointer shadow-2xs"
             title="Edit Title, Author, Dedication & Context"
           >
             <SlidersHorizontal size={13} />

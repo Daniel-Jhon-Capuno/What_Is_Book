@@ -8,8 +8,9 @@ import {
   recordRevision 
 } from './utils/storage';
 import { downloadHtmlFile } from './utils/htmlExporter';
-import { CollapsibleSidebar } from './components/CollapsibleSidebar';
 import { WordRibbonToolbar } from './components/WordRibbonToolbar';
+import { LibraryBookshelf } from './components/LibraryBookshelf';
+import { BookFetchTransition } from './components/BookFetchTransition';
 import { ManuscriptDetailsModal } from './components/ManuscriptDetailsModal';
 import { BookEditor } from './components/BookEditor';
 import { PoemEditor } from './components/PoemEditor';
@@ -19,14 +20,18 @@ import { QuoteImageModal } from './components/QuoteImageModal';
 import { PoemImageModal } from './components/PoemImageModal';
 import { VercelDeployGuideModal } from './components/VercelDeployGuideModal';
 import { BackupImportModal } from './components/BackupImportModal';
-import { Minimize2 } from 'lucide-react';
+import { soundEngine } from './utils/ambientSound';
+import { Library, Minimize2 } from 'lucide-react';
 
 export function App() {
   const [works, setWorks] = useState<LiteraryWork[]>(() => loadWorks());
   const [selectedWorkId, setSelectedWorkId] = useState<string>(() => works[0]?.id || '');
   
-  // Layout & Navigation State
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
+  // Library Bookshelf Menu State
+  const [showBookshelf, setShowBookshelf] = useState<boolean>(false);
+  const [fetchingWork, setFetchingWork] = useState<LiteraryWork | null>(null);
+
+  // Focus & Zen Mode State
   const [isZenMode, setIsZenMode] = useState<boolean>(false);
 
   // Microsoft Word-Style Formatting State
@@ -206,6 +211,7 @@ export function App() {
     setWorks((prev) => [newWork, ...prev]);
     setSelectedWorkId(newWork.id);
     recordRevision(newWork, 'Initial creation');
+    setShowBookshelf(false);
   };
 
   const handleDeleteWork = (id: string) => {
@@ -216,6 +222,20 @@ export function App() {
       }
       return filtered;
     });
+  };
+
+  // Taking a book off the shelf with loading screen simulation
+  const handleSelectBookFromShelf = (work: LiteraryWork) => {
+    soundEngine.playPageTurn();
+    setShowBookshelf(false);
+    setFetchingWork(work);
+  };
+
+  const handleFinishBookFetch = () => {
+    if (fetchingWork) {
+      setSelectedWorkId(fetchingWork.id);
+      setFetchingWork(null);
+    }
   };
 
   // Import works across laptops
@@ -265,118 +285,136 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5FBE6] text-[#233D4D] flex selection:bg-[#215E61]/20 selection:text-[#215E61]">
+    <div className="min-h-screen bg-[#F5FBE6] text-[#233D4D] flex flex-col selection:bg-[#215E61]/20 selection:text-[#215E61] relative">
       
-      {/* Collapsible Shelf Sidebar (Hidden during Zen mode) */}
-      {!isZenMode && (
-        <CollapsibleSidebar
-          works={works}
-          selectedWorkId={selectedWorkId}
-          isCollapsed={isSidebarCollapsed}
-          onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-          onSelectWork={(id) => setSelectedWorkId(id)}
-          onCreateWork={handleCreateWork}
-          onDeleteWork={handleDeleteWork}
+      {/* 1. FIXED TOP BAR WITH PERMANENT DIVIDER BORDER */}
+      {!isZenMode && currentWork && (
+        <WordRibbonToolbar
+          work={currentWork}
+          fontFamily={fontFamily}
+          fontSize={fontSize}
+          textAlignment={textAlignment}
+          hasDropcap={hasDropcap}
+          isZenMode={isZenMode}
+          autoSaveInterval={autoSaveInterval}
+          lastSavedAt={lastSavedAt}
+          onFontFamilyChange={setFontFamily}
+          onFontSizeChange={setFontSize}
+          onTextAlignmentChange={setTextAlignment}
+          onToggleDropcap={() => setHasDropcap(!hasDropcap)}
+          onInsertOrnament={handleInsertOrnament}
+          onToggleZenMode={() => setIsZenMode(true)}
+          onOpenDetails={() => setShowDetailsModal(true)}
+          onOpenSimulation={() => setSimulationWork(currentWork)}
+          onOpenBookshelf={() => setShowBookshelf(true)}
+          onExportHtml={() => downloadHtmlFile(currentWork)}
+          onOpenSnapshot={handleOpenSnapshot}
           onOpenBackupModal={() => setShowBackupModal(true)}
-          onOpenVercelGuide={() => setShowVercelGuide(true)}
+          activeChapterId={activeChapterId}
+          onSelectChapter={(id) => setActiveChapterId(id)}
+          onAddChapter={handleAddChapter}
         />
       )}
 
-      {/* Main Studio Area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        
-        {/* Word-Style Top Ribbon Toolbar (Hidden during Zen mode) */}
-        {!isZenMode && currentWork && (
-          <WordRibbonToolbar
-            work={currentWork}
-            fontFamily={fontFamily}
-            fontSize={fontSize}
-            textAlignment={textAlignment}
-            hasDropcap={hasDropcap}
-            isZenMode={isZenMode}
-            autoSaveInterval={autoSaveInterval}
-            lastSavedAt={lastSavedAt}
-            onFontFamilyChange={setFontFamily}
-            onFontSizeChange={setFontSize}
-            onTextAlignmentChange={setTextAlignment}
-            onToggleDropcap={() => setHasDropcap(!hasDropcap)}
-            onInsertOrnament={handleInsertOrnament}
-            onToggleZenMode={() => setIsZenMode(true)}
-            onOpenDetails={() => setShowDetailsModal(true)}
-            onOpenSimulation={() => setSimulationWork(currentWork)}
-            onExportHtml={() => downloadHtmlFile(currentWork)}
-            onOpenSnapshot={handleOpenSnapshot}
-            onOpenBackupModal={() => setShowBackupModal(true)}
-            activeChapterId={activeChapterId}
-            onSelectChapter={(id) => setActiveChapterId(id)}
-            onAddChapter={handleAddChapter}
-          />
-        )}
+      {/* Floating Zen Mode Exit Button */}
+      {isZenMode && (
+        <button
+          onClick={() => setIsZenMode(false)}
+          className="fixed top-4 right-4 z-50 p-2.5 rounded-full bg-[#215E61] text-[#F5FBE6] shadow-lg hover:bg-[#1a4a4d] transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+          title="Exit Zen Focus Mode"
+        >
+          <Minimize2 size={16} />
+          <span>Exit Zen Mode</span>
+        </button>
+      )}
 
-        {/* Floating Zen Mode Exit Button */}
-        {isZenMode && (
-          <button
-            onClick={() => setIsZenMode(false)}
-            className="fixed top-4 right-4 z-50 p-2.5 rounded-full bg-[#215E61] text-[#F5FBE6] shadow-lg hover:bg-[#1a4a4d] transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
-            title="Exit Zen Focus Mode"
+      {/* Discreet Floating Bookshelf Tab on Left Screen Edge */}
+      {!isZenMode && (
+        <button
+          onClick={() => setShowBookshelf(true)}
+          className="fixed left-0 top-1/2 -translate-y-1/2 z-30 px-2 py-3 rounded-r-xl bg-[#215E61] hover:bg-[#1a4a4d] text-[#F5FBE6] shadow-lg border-y border-r border-[#3a7e82] transition-all cursor-pointer flex flex-col items-center gap-1.5 group select-none opacity-85 hover:opacity-100"
+          title="Open Library Bookshelf Menu"
+        >
+          <Library size={16} />
+          <span 
+            style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
+            className="text-[10px] font-serif uppercase tracking-widest font-bold rotate-180"
           >
-            <Minimize2 size={16} />
-            <span>Exit Zen Mode</span>
-          </button>
+            Bookshelf
+          </span>
+        </button>
+      )}
+
+      {/* 2. CENTER DESK / WRITING CANVAS (Scrolls smoothly beneath fixed bar) */}
+      <main className="flex-1 overflow-y-auto px-4 sm:px-6">
+        {currentWork ? (
+          <>
+            {currentWork.type === 'book' && (
+              <BookEditor
+                book={currentWork as BookWork}
+                activeChapterId={activeChapterId}
+                fontFamily={fontFamily}
+                fontSize={fontSize}
+                textAlignment={textAlignment}
+                hasDropcap={hasDropcap}
+                onChange={handleUpdateWork}
+                onUpdateChapterTitle={(title) => handleUpdateChapter({ title })}
+                onUpdateChapterSubtitle={(subtitle) => handleUpdateChapter({ subtitle })}
+                onUpdateChapterContent={(content) => handleUpdateChapter({ content })}
+              />
+            )}
+
+            {currentWork.type === 'poem' && (
+              <PoemEditor
+                poem={currentWork as PoemWork}
+                fontFamily={fontFamily}
+                fontSize={fontSize}
+                textAlignment={textAlignment}
+                onChange={handleUpdateWork}
+              />
+            )}
+
+            {currentWork.type === 'quote' && (
+              <QuoteEditor
+                quote={currentWork as QuoteWork}
+                fontFamily={fontFamily}
+                fontSize={fontSize}
+                textAlignment={textAlignment}
+                onChange={handleUpdateWork}
+              />
+            )}
+          </>
+        ) : (
+          <div className="text-center py-24 font-serif text-[#536D7D]">
+            <p className="mb-4">No volume selected on your shelf.</p>
+            <button
+              onClick={() => setShowBookshelf(true)}
+              className="px-4 py-2 bg-[#215E61] text-[#F5FBE6] rounded-xl text-xs font-semibold cursor-pointer"
+            >
+              Browse Library Bookshelf
+            </button>
+          </div>
         )}
+      </main>
 
-        {/* Main Writing Canvas */}
-        <main className="flex-1 overflow-y-auto px-4 sm:px-6">
-          {currentWork ? (
-            <>
-              {currentWork.type === 'book' && (
-                <BookEditor
-                  book={currentWork as BookWork}
-                  activeChapterId={activeChapterId}
-                  fontFamily={fontFamily}
-                  fontSize={fontSize}
-                  textAlignment={textAlignment}
-                  hasDropcap={hasDropcap}
-                  onChange={handleUpdateWork}
-                  onUpdateChapterTitle={(title) => handleUpdateChapter({ title })}
-                  onUpdateChapterSubtitle={(subtitle) => handleUpdateChapter({ subtitle })}
-                  onUpdateChapterContent={(content) => handleUpdateChapter({ content })}
-                />
-              )}
+      {/* 3. THE 3D INTERACTIVE LIBRARY BOOKSHELF MENU */}
+      <LibraryBookshelf
+        works={works}
+        selectedWorkId={selectedWorkId}
+        isOpen={showBookshelf}
+        onClose={() => setShowBookshelf(false)}
+        onSelectWork={handleSelectBookFromShelf}
+        onCreateWork={handleCreateWork}
+        onDeleteWork={handleDeleteWork}
+      />
 
-              {currentWork.type === 'poem' && (
-                <PoemEditor
-                  poem={currentWork as PoemWork}
-                  fontFamily={fontFamily}
-                  fontSize={fontSize}
-                  textAlignment={textAlignment}
-                  onChange={handleUpdateWork}
-                />
-              )}
-
-              {currentWork.type === 'quote' && (
-                <QuoteEditor
-                  quote={currentWork as QuoteWork}
-                  fontFamily={fontFamily}
-                  fontSize={fontSize}
-                  textAlignment={textAlignment}
-                  onChange={handleUpdateWork}
-                />
-              )}
-            </>
-          ) : (
-            <div className="text-center py-24 font-serif text-[#536D7D]">
-              <p className="mb-4">No manuscript selected on your shelf.</p>
-              <button
-                onClick={() => handleCreateWork('book')}
-                className="px-4 py-2 bg-[#215E61] text-[#F5FBE6] rounded-xl text-xs font-semibold"
-              >
-                Create a New Work
-              </button>
-            </div>
-          )}
-        </main>
-      </div>
+      {/* 4. ATMOSPHERIC BOOK FETCHING / LOADING TRANSITION */}
+      {fetchingWork && (
+        <BookFetchTransition
+          work={fetchingWork}
+          onFinished={handleFinishBookFetch}
+        />
+      )}
 
       {/* Slide-over Manuscript Details & Context Modal */}
       {showDetailsModal && currentWork && (
