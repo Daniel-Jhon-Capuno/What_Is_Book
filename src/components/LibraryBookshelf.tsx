@@ -110,7 +110,14 @@ export const LibraryBookshelf: React.FC<LibraryBookshelfProps> = ({
   const [filter, setFilter] = useState<WorkType | 'all'>('all');
   const [search, setSearch] = useState<string>('');
   const [showAddMenu, setShowAddMenu] = useState<boolean>(false);
+  const [showShelfPicker, setShowShelfPicker] = useState<boolean>(false);
   const [hoveredWorkId, setHoveredWorkId] = useState<string | null>(null);
+
+  // Close menus when filter changes
+  useEffect(() => {
+    setShowAddMenu(false);
+    setShowShelfPicker(false);
+  }, [filter]);
 
   // Inspected book detail modal state
   const [inspectedWork, setInspectedWork] = useState<LiteraryWork | null>(null);
@@ -158,6 +165,52 @@ export const LibraryBookshelf: React.FC<LibraryBookshelfProps> = ({
       onSelectWork(target);
     }
   };
+
+  const handleCreateDirectOrMenu = () => {
+    if (filter === 'quote') {
+      onCreateWork('quote');
+    } else if (filter === 'poem') {
+      onCreateWork('poem');
+    } else if (filter === 'book') {
+      onCreateWork('book');
+    } else {
+      setShowAddMenu((prev) => !prev);
+    }
+  };
+
+  const handleShelfSlotClick = () => {
+    if (filter === 'quote') {
+      onCreateWork('quote');
+    } else if (filter === 'poem') {
+      onCreateWork('poem');
+    } else if (filter === 'book') {
+      onCreateWork('book');
+    } else {
+      setShowShelfPicker((prev) => !prev);
+    }
+  };
+
+  let slotLabel = 'New Volume';
+  let SlotIcon = Plus;
+  let topButtonLabel = 'Bind New Volume';
+  let TopButtonIcon = Plus;
+
+  if (filter === 'quote') {
+    slotLabel = 'New Quote';
+    SlotIcon = Quote;
+    topButtonLabel = 'Inscribe New Quote';
+    TopButtonIcon = Quote;
+  } else if (filter === 'poem') {
+    slotLabel = 'New Poem';
+    SlotIcon = Feather;
+    topButtonLabel = 'Pen New Poem';
+    TopButtonIcon = Feather;
+  } else if (filter === 'book') {
+    slotLabel = 'New Book';
+    SlotIcon = BookOpen;
+    topButtonLabel = 'Bind New Book';
+    TopButtonIcon = BookOpen;
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-[#0e171c] text-[#F5FBE6] animate-fadeIn select-none overflow-hidden">
@@ -233,14 +286,15 @@ export const LibraryBookshelf: React.FC<LibraryBookshelfProps> = ({
           {/* Add Volume Button */}
           <div className="relative">
             <button
-              onClick={() => setShowAddMenu(!showAddMenu)}
+              onClick={handleCreateDirectOrMenu}
               className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#215E61] hover:bg-[#1a4a4d] text-[#F5FBE6] text-xs font-semibold shadow-xs transition-all cursor-pointer"
+              title={filter === 'all' ? 'Choose type of volume to bind' : `Immediately create ${slotLabel.toLowerCase()}`}
             >
-              <Plus size={14} />
-              <span>Bind New Volume</span>
+              <TopButtonIcon size={14} />
+              <span>{topButtonLabel}</span>
             </button>
 
-            {showAddMenu && (
+            {showAddMenu && filter === 'all' && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowAddMenu(false)} />
                 <div className="absolute right-0 mt-2 w-52 bg-[#F5FBE6] border border-[#215E61]/30 rounded-xl shadow-2xl z-50 p-2 space-y-1 text-xs text-[#233D4D]">
@@ -434,18 +488,71 @@ export const LibraryBookshelf: React.FC<LibraryBookshelfProps> = ({
 
                   {/* Add Volume Slot (styled like an empty volume book jacket) */}
                   {isLastShelf && (
-                    <button
-                      onClick={() => setShowAddMenu(true)}
-                      className="w-18 sm:w-22 h-60 sm:h-72 border-2 border-dashed border-[#406173] hover:border-[#F5FBE6] hover:bg-white/5 rounded-t-sm flex flex-col items-center justify-center gap-2 text-[#799fb5] hover:text-[#F5FBE6] transition-all cursor-pointer shrink-0 group mb-0"
-                      title="Bind a new volume on this shelf"
-                    >
-                      <div className="w-9 h-9 rounded-full bg-[#1b2b34] group-hover:bg-[#215E61] flex items-center justify-center text-[#F5FBE6] shadow-sm transition-colors">
-                        <Plus size={18} />
-                      </div>
-                      <span className="text-[10px] font-serif uppercase tracking-widest text-center px-1 font-semibold">
-                        New Volume
-                      </span>
-                    </button>
+                    <div className="relative shrink-0 mb-0">
+                      <button
+                        onClick={handleShelfSlotClick}
+                        className="w-18 sm:w-22 h-60 sm:h-72 border-2 border-dashed border-[#406173] hover:border-[#F5FBE6] hover:bg-white/5 rounded-t-sm flex flex-col items-center justify-center gap-2 text-[#799fb5] hover:text-[#F5FBE6] transition-all cursor-pointer group"
+                        title={filter === 'all' ? 'Choose a volume type to add on this shelf' : `Click to add ${slotLabel}`}
+                      >
+                        <div className="w-9 h-9 rounded-full bg-[#1b2b34] group-hover:bg-[#215E61] flex items-center justify-center text-[#F5FBE6] shadow-sm transition-colors">
+                          <SlotIcon size={18} />
+                        </div>
+                        <span className="text-[10px] font-serif uppercase tracking-widest text-center px-1 font-semibold leading-tight">
+                          {slotLabel}
+                        </span>
+                      </button>
+
+                      {/* In-shelf Popover Menu right above the slot (ONLY when in 'all' view) */}
+                      {showShelfPicker && filter === 'all' && (
+                        <>
+                          <div 
+                            className="fixed inset-0 z-40" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowShelfPicker(false);
+                            }} 
+                          />
+                          <div 
+                            onClick={(e) => e.stopPropagation()}
+                            className="absolute -top-36 left-1/2 -translate-x-1/2 w-52 bg-[#FAFDF3] text-[#233D4D] rounded-xl shadow-2xl border-2 border-[#215E61] p-1.5 z-50 animate-scaleUp select-none book-paper-texture"
+                          >
+                            <div className="text-[10px] font-serif uppercase tracking-widest text-[#215E61] font-bold px-2 py-1 border-b border-[#215E61]/15 mb-1 text-center">
+                              Select Volume Type
+                            </div>
+                            <button
+                              onClick={() => {
+                                onCreateWork('book');
+                                setShowShelfPicker(false);
+                              }}
+                              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[#215E61]/10 text-xs font-serif font-semibold text-[#215E61] transition-colors cursor-pointer"
+                            >
+                              <BookOpen size={13} />
+                              <span>New Book Volume</span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                onCreateWork('poem');
+                                setShowShelfPicker(false);
+                              }}
+                              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[#215E61]/10 text-xs font-serif font-semibold text-[#215E61] transition-colors cursor-pointer"
+                            >
+                              <Feather size={13} />
+                              <span>New Poetry Broadsheet</span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                onCreateWork('quote');
+                                setShowShelfPicker(false);
+                              }}
+                              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[#215E61]/10 text-xs font-serif font-semibold text-[#215E61] transition-colors cursor-pointer"
+                            >
+                              <Quote size={13} />
+                              <span>New Inscribed Quote</span>
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   )}
 
                   {/* Right Antique Brass Bookend */}
