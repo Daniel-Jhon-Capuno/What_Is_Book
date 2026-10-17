@@ -101,14 +101,14 @@ export const QuoteImageModal: React.FC<QuoteImageModalProps> = ({ quote, onClose
   const getRatioStyle = () => {
     switch (ratio) {
       case '9:16':
-        return { width: '360px', height: '640px' };
+        return { width: '360px', minHeight: '640px' };
       case '4:5':
-        return { width: '400px', height: '500px' };
+        return { width: '400px', minHeight: '500px' };
       case '16:9':
-        return { width: '560px', height: '315px' };
+        return { width: '560px', minHeight: '315px' };
       case '1:1':
       default:
-        return { width: '440px', height: '440px' };
+        return { width: '440px', minHeight: '440px' };
     }
   };
 
@@ -117,9 +117,22 @@ export const QuoteImageModal: React.FC<QuoteImageModalProps> = ({ quote, onClose
     setIsExporting(true);
 
     try {
-      const dataUrl = await toPng(cardRef.current, {
+      const el = cardRef.current;
+      const fullWidth = el.scrollWidth;
+      const fullHeight = el.scrollHeight;
+
+      const dataUrl = await toPng(el, {
         cacheBust: true,
         pixelRatio: 3, // Crisp high-DPI export
+        width: fullWidth,
+        height: fullHeight,
+        style: {
+          transform: 'none',
+          margin: '0',
+          maxHeight: 'none',
+          height: `${fullHeight}px`,
+          width: `${fullWidth}px`,
+        },
       });
 
       const safeName = (quote.maker || 'quote')
@@ -149,8 +162,21 @@ export const QuoteImageModal: React.FC<QuoteImageModalProps> = ({ quote, onClose
   const handleCopyClipboard = async () => {
     if (!cardRef.current) return;
     try {
-      const blob = await toBlob(cardRef.current, {
+      const el = cardRef.current;
+      const fullWidth = el.scrollWidth;
+      const fullHeight = el.scrollHeight;
+
+      const blob = await toBlob(el, {
         pixelRatio: 2,
+        width: fullWidth,
+        height: fullHeight,
+        style: {
+          transform: 'none',
+          margin: '0',
+          maxHeight: 'none',
+          height: `${fullHeight}px`,
+          width: `${fullWidth}px`,
+        },
       });
       if (blob && navigator.clipboard && window.ClipboardItem) {
         await navigator.clipboard.write([
@@ -373,7 +399,7 @@ export const QuoteImageModal: React.FC<QuoteImageModalProps> = ({ quote, onClose
               color: currentStyles.text,
               fontFamily: getFontFamily(),
             }}
-            className="relative flex flex-col justify-between p-8 md:p-10 shadow-xl transition-all duration-300 select-none overflow-hidden shrink-0"
+            className="relative flex flex-col justify-between p-8 md:p-10 shadow-xl transition-all duration-300 select-none shrink-0"
           >
             {/* Optional ornamental border */}
             {showBorder && (
